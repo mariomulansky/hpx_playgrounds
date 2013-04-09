@@ -12,10 +12,9 @@
 
 //namespace hpx_step {
 
-    double euler_operation( double x , double dxdt )
+double euler_operation( double x , double dxdt , const double dt )
     {
         //std::clog << "euler operation" << std::endl;
-        static const double dt = 0.01;
         return x + dt*dxdt;
     }
 
@@ -34,12 +33,12 @@ namespace hpx_step {
     typedef dataflow_base<double> df_base;
     typedef std::vector< df_base > state_type;
 
-    void euler_step( state_type &x , state_type &dxdt , hpx::naming::id_type loc )
+    void euler_step( state_type &x , state_type &dxdt , const double dt , hpx::naming::id_type loc )
     {
         for( size_t i=0; i<boost::size(x) ; ++i )
         {
             //std::clog << "euler " << i << std::endl;
-            x[i] = dataflow< euler_operation_action >( loc , x[i] , dxdt[i] );
+            x[i] = dataflow< euler_operation_action >( loc , x[i] , dxdt[i] , dt );
         }
     }
 }

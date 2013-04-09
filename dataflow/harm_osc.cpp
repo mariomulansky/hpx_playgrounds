@@ -60,7 +60,7 @@ int main()
     for( size_t t=0 ; t<steps ; ++t )
     {
         osc( x , dxdt , here );
-        hpx_step::euler_step( x , dxdt , here );
+        hpx_step::euler_step( x , dxdt , dt , here );
         if( steps % 10 == 0 )
             std::cout << x[0].get_future().get() << '\t' << x[1].get_future().get() << std::endl;
     }
