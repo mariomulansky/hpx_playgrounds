@@ -6,7 +6,7 @@
 #define HPX_LIMIT 6
 
 #include <hpx/hpx.hpp>
-#include <hpx/hpx_main.hpp>
+#include <hpx/hpx_init.hpp>
 #include <hpx/runtime/actions/plain_action.hpp>
 #include <hpx/components/dataflow/dataflow.hpp>
 #include <hpx/lcos/async.hpp>
@@ -30,9 +30,6 @@ typedef std::vector< df_base > state_type;
 
 typedef euler< state_type , double , state_type , double , dataflow_algebra , dataflow_operations > stepper_type;
 
-const int N = 1000;
-const size_t steps = 100;
-const double dt = 0.01;
 const double lmbd = 0.01;
 
 double rhs_operation( const double x )
@@ -56,21 +53,14 @@ void sys( const state_type &x , state_type &dxdt , const double dt )
         dxdt[i] = dataflow< rhs_operation_action >( find_here() , x[i] );
 }
 
-int main()
+int hpx_main(boost::program_options::variables_map& vm)
 {
-    // boost::program_options::options_description
-    //    desc_commandline("Usage: " HPX_APPLICATION_STRING " [options]");
 
-    // desc_commandline.add_options()
-    //     ( "N",
-    //       boost::program_options::value<std::size_t>()->default_value(100),
-    //       "System size")
-    //     ;
-    // desc_commandline.add_options()
-    //     ( "steps",
-    //       boost::program_options::value<std::size_t>()->default_value(100),
-    //       "steps")
-    //     ;
+    const std::size_t N = vm["N"].as<std::size_t>();
+    const std::size_t steps = vm["steps"].as<std::size_t>();
+    const double dt = vm["dt"].as<double>();
+
+    std::clog << "system size: " << N << ", steps: " << steps << ", dt: " << dt << std::endl;
 
     state_type x( N , dataflow< identity_action >( find_here() , 100.0 ) );
     //df_base t = dataflow< identity_action >( find_here() , 0.0 );
@@ -90,6 +80,32 @@ int main()
         futures[i] = x[i].get_future();
     wait( futures );
 
-    std::cout << timer.elapsed() << std::endl;
+    std::clog << "Calculation finished in " << timer.elapsed() << "s" << std::endl;
     return 0;
+}
+
+
+int main( int argc , char* argv[] )
+{
+    boost::program_options::options_description
+       desc_commandline("Usage: " HPX_APPLICATION_STRING " [options]");
+
+    desc_commandline.add_options()
+        ( "N",
+          boost::program_options::value<std::size_t>()->default_value(100),
+          "System size")
+        ;
+    desc_commandline.add_options()
+        ( "steps",
+          boost::program_options::value<std::size_t>()->default_value(100),
+          "time steps")
+        ;
+    desc_commandline.add_options()
+        ( "dt",
+          boost::program_options::value<double>()->default_value(0.01),
+          "step size")
+        ;
+
+    // Initialize and run HPX
+    return hpx::init(desc_commandline, argc, argv);
 }
