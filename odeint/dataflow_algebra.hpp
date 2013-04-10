@@ -4,8 +4,8 @@
 
 #include "dataflow_operations.hpp"
 
-using hpx::lcos::dataflow; ///!!!!////
-using hpx::lcos::dataflow_base; ///!!!!////
+using hpx::lcos::dataflow;
+using hpx::lcos::dataflow_base;
 using hpx::find_here;
 
 struct dataflow_algebra

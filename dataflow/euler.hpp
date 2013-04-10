@@ -13,10 +13,10 @@
 //namespace hpx_step {
 
 double euler_operation( double x , double dxdt , const double dt )
-    {
-        //std::clog << "euler operation" << std::endl;
-        return x + dt*dxdt;
-    }
+{
+    //std::clog << "euler operation" << std::endl;
+    return x + dt*dxdt;
+}
 
 //    HPX_DEFINE_PLAIN_ACTION(euler_operation, euler_operation_action);
 //}

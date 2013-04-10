@@ -1,4 +1,6 @@
 // Copyright 2013 Mario Mulansky
+//
+// trivial example on how to use Boost.odeint with hpx dataflows
 
 #include <iostream>
 #include <vector>
@@ -63,25 +65,32 @@ int hpx_main(boost::program_options::variables_map& vm)
     std::clog << "system size: " << N << ", steps: " << steps << ", dt: " << dt << std::endl;
 
     state_type x( N , dataflow< identity_action >( find_here() , 100.0 ) );
-    //df_base t = dataflow< identity_action >( find_here() , 0.0 );
-    //df_base dt = dataflow< identity_action >( find_here() , 0.1 );
     double t = 0.0;
 
-    stepper_type stepper;
-
     hpx::util::high_resolution_timer timer;
-
-    boost::numeric::odeint::integrate_n_steps( stepper , sys , x , t , dt , steps );
+    
+    // do the numerical integration using dataflow objects
+    boost::numeric::odeint::integrate_n_steps( stepper_type() , sys , x , t , dt , steps );
 
     std::clog << "Dependency tree built" << std::endl;
 
     std::vector< future<double> > futures( N );
-    for( int i=0 ; i<N ; ++i )
+    for( size_t i=0 ; i<N ; ++i )
+    {
         futures[i] = x[i].get_future();
+    }
+    
+    // here we wait for the results
     wait( futures );
 
     std::clog << "Calculation finished in " << timer.elapsed() << "s" << std::endl;
-    return 0;
+
+    // print the values
+    // for( size_t i=0 ; i<N ; ++i )
+    //     std::cout << futures[i].get() << '\t';
+    // std::cout << std::endl;
+
+    return hpx::finalize();
 }
 
 
