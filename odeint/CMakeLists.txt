@@ -15,3 +15,8 @@ add_hpx_executable(odeint_dataflow_test
     ESSENTIAL
     SOURCES odeint_dataflow_test.cpp 
     DEPENDENCIES dataflow )
+
+add_hpx_executable(subspace_test
+    ESSENTIAL
+    SOURCES subspace_test.cpp 
+    DEPENDENCIES dataflow )

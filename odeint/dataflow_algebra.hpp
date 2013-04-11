@@ -24,5 +24,20 @@ struct dataflow_algebra
 
 };
 
+struct dataflow_sub_algebra
+{
+
+    template< class S1 , class S2 , class S3 , class Op >
+    static void for_each3( S1 &s1 , S2 &s2 , S3 &s3 , Op op )
+    {
+        const size_t N = boost::size( s1 );
+        for( size_t i=0 ; i<N ; ++i )
+        {
+            s1[i] = dataflow< hpx_scale_sum2_sub_action >( find_here() , s2[i] , s3[i] , 
+                                                           op.m_alpha1 , op.m_alpha2 );
+        }
+    }
+
+};
 
 #endif
