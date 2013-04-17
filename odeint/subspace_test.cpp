@@ -14,6 +14,7 @@
 
 #include <boost/numeric/odeint.hpp>
 
+#include "hpx_dataflow_resize.hpp"
 #include "dataflow_algebra.hpp"
 #include "dataflow_operations.hpp"
 
@@ -30,50 +31,6 @@ typedef dataflow_base< double > df_base;
 typedef std::vector< double > dvec;
 typedef std::vector< dataflow_base< dvec > > state_type;
 
-dvec identity(dvec initial_value)
-{
-    return initial_value;
-}
-
-HPX_PLAIN_ACTION(identity, identity_action);
-
-const size_t M = 1000;
-
-namespace boost {
-namespace numeric {
-namespace odeint {
-
-template<>
-struct is_resizeable< state_type >
-{
-    typedef boost::true_type type;
-    const static bool value = type::value;
-};
-
-template<>
-struct same_size_impl< state_type , state_type >
-{
-    static bool same_size( const state_type &x1 ,
-                           const state_type &x2 )
-    {
-        return ( ( x1.size() == x2.size() ) );
-    }
-};
-
-template<>
-struct resize_impl< state_type , state_type >
-{
-    static void resize( state_type &x1 ,
-                        const state_type &x2 )
-    {
-        x1.resize( x2.size() );
-        for( size_t i=0 ; i< x2.size() ; ++i )
-            x1[i] = dataflow< identity_action >( find_here() , dvec( M ) );
-    }
-};
-
-} } }
-
 typedef euler< state_type , double , state_type , double , dataflow_sub_algebra , dataflow_operations > stepper_type;
 
 const double lmbd = 0.01;
@@ -81,7 +38,7 @@ const double lmbd = 0.01;
 dvec rhs_operation( dvec x , dvec dxdt )
 {
     for( size_t i=0 ; i<x.size() ; ++i )
-        dxdt[i] = pow(abs(x[i]),0.5) * sin(x[i]) + cos(x[i]);
+        dxdt[i] = -x[i]; //pow(abs(x[i]),0.5) * sin(x[i]) + cos(x[i]);
     return dxdt;
 }
 
@@ -98,7 +55,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 {
 
     const std::size_t N = vm["N"].as<std::size_t>();
-    //const std::size_t M = vm["M"].as<std::size_t>();
+    const std::size_t M = vm["M"].as<std::size_t>();
     const std::size_t steps = vm["steps"].as<std::size_t>();
     const double dt = vm["dt"].as<double>();
 
@@ -107,7 +64,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     state_type x( N );
     for( size_t i=0 ; i<N ; ++i )
-        x[i] = dataflow< identity_action >( find_here() , dvec( M , 100.0 ) );
+        x[i] = dataflow< identity_vec_action >( find_here() , dvec( M , 100.0 ) );
     double t = 0.0;
 
     hpx::util::high_resolution_timer timer;
@@ -130,7 +87,8 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     // print the values
     // for( size_t i=0 ; i<N ; ++i )
-    //     std::cout << futures[i].get() << '\t';
+    //     for( size_t m=0 ; m<M ; m++ )
+    //         std::cout << futures[i].get()[m] << '\t';
     // std::cout << std::endl;
 
     return hpx::finalize();
@@ -147,11 +105,11 @@ int main( int argc , char* argv[] )
           boost::program_options::value<std::size_t>()->default_value(4),
           "Number of dataflows (4)")
         ;
-    // desc_commandline.add_options()
-    //     ( "M",
-    //       boost::program_options::value<std::size_t>()->default_value(100),
-    //       "Number of elements in each dataflow (100)")
-    //     ;
+    desc_commandline.add_options()
+        ( "M",
+          boost::program_options::value<std::size_t>()->default_value(10000),
+          "Number of elements in each dataflow (100)")
+        ;
     desc_commandline.add_options()
         ( "steps",
           boost::program_options::value<std::size_t>()->default_value(100),

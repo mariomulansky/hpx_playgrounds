@@ -18,5 +18,25 @@ add_hpx_executable(odeint_dataflow_test
 
 add_hpx_executable(subspace_test
     ESSENTIAL
-    SOURCES subspace_test.cpp 
+    SOURCES subspace_test.cpp dataflow_operations.cpp
+    DEPENDENCIES dataflow )
+
+add_hpx_executable(subspace_ptr_test
+    ESSENTIAL
+    SOURCES subspace_ptr_test.cpp 
+    DEPENDENCIES dataflow )
+
+add_hpx_executable(dataflow_refs
+    ESSENTIAL
+    SOURCES dataflow_refs.cpp 
+    DEPENDENCIES dataflow )
+
+add_hpx_executable(component_test
+    ESSENTIAL
+    SOURCES component_test.cpp op.cpp
+    )
+
+add_hpx_executable(dataflow_resize
+    ESSENTIAL
+    SOURCES dataflow_resize.cpp 
     DEPENDENCIES dataflow )
