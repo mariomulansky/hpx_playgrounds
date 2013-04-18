@@ -10,41 +10,8 @@
 
 typedef std::vector<double> dvec;
 
-using hpx::components::simple_component;
-using hpx::components::simple_component_base;
 using hpx::components::managed_component;
 using hpx::components::managed_component_base;
-
-// double hpx_scale_sum2( double x , double dxdt , double a1 , double a2 )
-// {
-//     //std::clog << "euler operation" << std::endl;
-//     return a1*x + a2*dxdt;
-// }
-
-// HPX_PLAIN_ACTION( hpx_scale_sum2, hpx_scale_sum2_action );
-
-// dvec hpx_scale_sum2_sub( dvec out , const dvec &x , const dvec &dxdt , double a1 , double a2 )
-// {
-//     //std::clog << "euler operation" << std::endl;
-//     for( size_t i=0 ; i<x.size() ; ++i )
-//         out[i] = a1*x[i] + a2*dxdt[i];
-//     return out;
-// }
-
-// HPX_PLAIN_ACTION( hpx_scale_sum2_sub, hpx_scale_sum2_sub_action );
-
-/*dvec_ref hpx_scale_sum2_ref( devc_ref x_ , dvec_ref dxdt_ , double a1 , double a2 )
-{
-    dvec &x = x_;
-    dvec &dxdt = dxdt_;
-    for( int i=0 ; i<x.size() ; ++i )
-        x[i] += a2*dxdt[i];
-    return x_;
-}
-
-HPX_PLAIN_ACTION( hpx_scale_sum2_ref, hpx_scale_sum2_ptr_action );
-*/
-
 
 struct dataflow_operations
 {
@@ -86,8 +53,10 @@ struct dataflow_actions
     struct operation3 : managed_component_base< operation3 >
     {
 
-        template< typename Vector , typename Operation >
-        Vector apply( Vector x1 , const Vector &x2 , const Vector &x3 , const Operation &op )
+        //template< typename S1 , typename S2 , typename S3 , typename Operation >
+        // for now just one state type to reduce compile time
+        template< typename S , typename Operation >
+        S apply( S x1 , const S &x2 , const S &x3 , const Operation &op )
         {
             for( size_t i=0 ; i<x1.size() ; ++i )
                 op( x1[i] , x2[i] , x3[i] );
@@ -95,10 +64,12 @@ struct dataflow_actions
         }
 
         // action definition for template member function
-        template <typename Vector , typename Operation>
+        //template< typename S1 , typename S2 , typename S3 , typename Operation >
+        // for now just one state type to reduce compile time
+        template< typename S , typename Operation >
         struct operation3_action
-            : hpx::actions::make_action<Vector (operation3::*)( Vector , const Vector & , const Vector & , const Operation& ),
-                                        &operation3::template apply< Vector , Operation >, operation3_action< Vector , Operation > >
+            : hpx::actions::make_action<S (operation3::*)( S , const S & , const S & , const Operation& ),
+                                        &operation3::template apply< S , Operation >, operation3_action< S , Operation > >
         {};
         
     };
@@ -106,8 +77,8 @@ struct dataflow_actions
 };
 
 HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
-                                         (template <typename Vector , typename Operation>),
-                                         (dataflow_actions::operation3::operation3_action<Vector , Operation>)
+    (template < typename S , typename Operation>),
+    (dataflow_actions::operation3::operation3_action<S , Operation>)
 )
 
 
