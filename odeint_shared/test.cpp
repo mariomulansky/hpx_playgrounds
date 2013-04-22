@@ -65,6 +65,44 @@ void sys( const state_type &x , state_type &dxdt , const double dt )
         dxdt[i] = dataflow< rhs_operation_action >( find_here() , x[i] , dxdt[i] );
 }
 
+shared_vec sync_identity( shared_vec x , shared_vec sync1 , shared_vec sync2 , shared_vec sync3 )
+{
+    return x;
+}
+
+HPX_PLAIN_ACTION( sync_identity , sync_identity_action )
+
+shared_vec sync_identity2( shared_vec x , shared_vec sync1 )
+{
+    return x;
+}
+
+HPX_PLAIN_ACTION( sync_identity2 , sync_identity2_action )
+
+// syncronized swap emulating nearest neighbor coupling
+void synchronized_swap( state_type &x_in , state_type &x_out )
+{
+    const size_t N = x_in.size();
+    dataflow_base< shared_vec > x_0 = x_out[0];
+    dataflow_base< shared_vec > x_left = x_out[0];
+    dataflow_base< shared_vec > x_tmp = dataflow< sync_identity_action >( find_here() , x_in[0] , 
+                                                                          x_out[0] , x_out[N-1] , x_out[1] );
+    x_in[0] = dataflow< sync_identity2_action >( find_here() , x_out[0] , x_tmp );
+    x_out[0] = x_tmp;
+    for( size_t n=1 ; n<N-1 ; ++n )
+    {
+        x_tmp = dataflow< sync_identity_action >( find_here() , x_in[n] , 
+                                              x_out[n] , x_left , x_out[n+1] );
+        x_left = x_out[n];
+        x_in[n] = dataflow< sync_identity2_action >( find_here() , x_out[n] , x_tmp );
+        x_out[n] = x_tmp;
+    }
+    x_tmp = dataflow< sync_identity_action >( find_here() , x_in[N-1] , 
+                                          x_out[N-1] , x_left , x_0 );
+    x_in[N-1] = dataflow< sync_identity2_action >( find_here() , x_out[N-1] , x_tmp );
+    x_out[N-1] = x_tmp;
+}
+
 int hpx_main(boost::program_options::variables_map& vm)
 {
 
@@ -89,13 +127,16 @@ int hpx_main(boost::program_options::variables_map& vm)
                                                   M ,
                                                   0.0 );
     }
-    double t = 0.0;
 
     hpx::util::high_resolution_timer timer;
     
     // do the numerical integration using dataflow objects
     stepper_type stepper;
-    stepper.do_step( sys , x_in , t , x_out , dt );
+    for( size_t t=0 ; t<steps ; ++t )
+    {
+        stepper.do_step( sys , x_in , t , x_out , dt );
+        synchronized_swap( x_in , x_out );
+    }
 
     std::clog << "Dependency tree built" << std::endl;
 
@@ -109,14 +150,14 @@ int hpx_main(boost::program_options::variables_map& vm)
     
     // here we wait for the results
     wait( futures_in );
-    wait( futures_out );
+    //wait( futures_out );
 
     std::clog << "Calculation finished in " << timer.elapsed() << "s" << std::endl;
 
     // print the values
     for( size_t i=0 ; i<N ; ++i )
         for( size_t m=0 ; m<M ; m++ )
-            std::cout << (*(futures_out[i].get()))[m] << '\t';
+            std::cout << (*(futures_in[i].get()))[m] << '\t';
     std::cout << std::endl;
 
     
