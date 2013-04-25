@@ -3,10 +3,13 @@
 #define DATAFLOW_SHARED_OPERATIONS_HPP
 
 #include <vector>
+#include <memory>
 
 #include <hpx/include/components.hpp>
 #include <hpx/include/actions.hpp>
 #include <hpx/runtime/actions/component_action.hpp>
+
+#include "serialization.hpp"
 
 typedef std::vector<double> dvec;
 
@@ -71,7 +74,7 @@ struct dataflow_shared_actions
             : hpx::actions::make_action<S (operation3::*)( S , const S & , const S & , const Operation& ),
                                         &operation3::template apply< S , Operation >, operation3_action< S , Operation > >
         {};
-        
+
     };
 
 };
@@ -80,6 +83,5 @@ HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
     (template < typename S , typename Operation>),
     (dataflow_shared_actions::operation3::operation3_action<S , Operation>)
 )
-
 
 #endif

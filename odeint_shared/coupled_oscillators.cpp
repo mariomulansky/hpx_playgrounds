@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <cmath>
 
 #define HPX_LIMIT 6
 
@@ -12,13 +13,18 @@
 #include <hpx/runtime/actions/plain_action.hpp>
 #include <hpx/components/dataflow/dataflow.hpp>
 #include <hpx/lcos/async.hpp>
+#include <hpx/include/iostreams.hpp>
 
 #include <boost/math/special_functions/pow.hpp>
+#include <boost/math/special_functions/sign.hpp>
 #include <boost/numeric/odeint.hpp>
+#include <boost/format.hpp>
 
 #include "dataflow_shared_resize.hpp"
 #include "dataflow_shared_algebra.hpp"
 #include "dataflow_shared_operations.hpp"
+#include "dataflow_shared_operations_global.hpp"
+#include "serialization.hpp"
 
 using hpx::async;
 using hpx::lcos::future;
@@ -26,6 +32,9 @@ using hpx::lcos::dataflow;
 using hpx::lcos::dataflow_base;
 using hpx::find_here;
 using hpx::lcos::wait;
+
+using hpx::cout;
+using hpx::flush;
 
 using boost::numeric::odeint::euler;
 using boost::numeric::odeint::symplectic_rkn_sb3a_mclachlan;
@@ -36,15 +45,8 @@ typedef std::shared_ptr< dvec > shared_vec;
 typedef std::vector< dataflow_base< shared_vec > > state_type;
 typedef std::vector< dvec > vec_dvec;
 
-// add serialization to shared_ptr
-namespace boost { namespace serialization {
-template<class Archive>
-void serialize(Archive & ar, shared_vec &v , const unsigned int version)
-{
-    // empty for now
-}
-} }
-
+const double KAPPA=3.5;
+const double LAMBDA=4.5;
 
 //typedef euler< state_type , double , state_type , double , dataflow_shared_algebra , dataflow_operations > stepper_type;
 //typedef euler< state_type > stepper_type;
@@ -54,30 +56,32 @@ typedef symplectic_rkn_sb3a_mclachlan< state_type ,
                                        state_type ,
                                        state_type , 
                                        double ,
-                                       dataflow_shared_algebra ,
+                                       dataflow_shared_algebra_global ,
                                        dataflow_operations > stepper_type;
 
 shared_vec osc_operation( shared_vec q , shared_vec q_l , shared_vec q_r , shared_vec dpdt )
 {
-    using boost::math::pow;
+    using std::pow;
+    using std::abs;
+    using boost::math::sign;
 
     const size_t M = q->size();
 
-    (*dpdt)[0] = -pow<3>((*q)[0]) 
-        - pow<5>( (*q)[0] - (*q)[1] ) 
-        - pow<5>( (*q)[0] - (*q_l)[q_l->size()-1] );
+    (*dpdt)[0] = -pow( abs((*q)[0]) , KAPPA-1 ) * sign( (*q)[0] )
+        - pow( abs((*q)[0]-(*q)[1]) , LAMBDA-1 ) * sign( (*q)[0]-(*q)[1] )
+        - pow( abs((*q)[0]-(*q_l)[q_l->size()-1]) , LAMBDA-1 ) * sign((*q)[0]-(*q_l)[q_l->size()-1]);
 
     for( size_t i=1 ; i<M-1 ; ++i )
     {
-        (*dpdt)[i] = -pow<3>((*q)[i])
-            - pow<5>( (*q)[i] - (*q)[i+1] ) 
-            - pow<5>( (*q)[i] - (*q)[i-1] );
+        (*dpdt)[i] = -pow( abs((*q)[i]) , KAPPA-1 ) * sign((*q)[i])
+            - pow( abs((*q)[i]-(*q)[i+1]) , LAMBDA-1 ) * sign((*q)[i]-(*q)[i+1])
+            - pow( abs((*q)[i]-(*q)[i-1]) , LAMBDA-1 ) * sign((*q)[i]-(*q)[i-1]);
     }
 
-    (*dpdt)[M-1] = -pow<3>((*q)[M-1]) 
-        - pow<5>( (*q)[M-1] - (*q_r)[0] ) 
-        - pow<5>( (*q)[M-1] - (*q)[M-2] );
-    
+    (*dpdt)[M-1] = -pow( abs((*q)[M-1]) , KAPPA-1 ) * sign((*q)[M-1]) 
+        - pow( abs((*q)[M-1] - (*q_r)[0]) , LAMBDA-1 ) * sign((*q)[M-1]-(*q_r)[0])
+        - pow( abs((*q)[M-1] - (*q)[M-2]) , LAMBDA-1 ) * sign((*q)[M-1]-(*q)[M-2]);
+
     return dpdt;
 }
 
@@ -86,20 +90,64 @@ HPX_PLAIN_ACTION(osc_operation, osc_operation_action);
 void osc_sys( const state_type &q , state_type &dpdt )
 {
     const size_t N = q.size();
-
+    //std::cout << "system call with N=" << N << std::endl;
     dpdt[0] = dataflow< osc_operation_action >( find_here() ,
                                                 q[0] , q[N-1] , q[1] ,
                                                 dpdt[0] );
 
     for( size_t i=1 ; i<N-1 ; ++i )
         dpdt[i] = dataflow< osc_operation_action >( find_here() , 
-                                                    q[i] , q[i-1] , q[i+1] , 
+                                                    q[i] , q[i-1] , q[i+1] ,
                                                     dpdt[i] );
 
     dpdt[N-1] = dataflow< osc_operation_action >( find_here() ,
                                                   q[N-1] , q[N-2] , q[0] ,
                                                   dpdt[N-1] );
+    //std::cout << "-------" << std::endl;
 }
+
+
+shared_vec simple_osc_operation( shared_vec q , shared_vec dpdt )
+{
+    using boost::math::pow;
+
+    const size_t M = q->size();
+
+    //std::cout << M << std::endl;
+
+    (*dpdt)[0] = -pow<3>((*q)[0]);
+
+    for( size_t i=1 ; i<M-1 ; ++i )
+    {
+        (*dpdt)[i] = -pow<3>((*q)[i]);
+    }
+
+    (*dpdt)[M-1] = -pow<3>((*q)[M-1]);
+    
+    return dpdt;
+}
+
+HPX_PLAIN_ACTION(simple_osc_operation, simple_osc_operation_action);
+
+void simple_osc_sys( const state_type &q , state_type &dpdt )
+{
+    const size_t N = q.size();
+    //std::cout << "system call with N=" << N << std::endl;
+    dpdt[0] = dataflow< simple_osc_operation_action >( find_here() ,
+                                                q[0] ,
+                                                dpdt[0] );
+
+    for( size_t i=1 ; i<N-1 ; ++i )
+        dpdt[i] = dataflow< simple_osc_operation_action >( find_here() , 
+                                                    q[i] ,
+                                                    dpdt[i] );
+
+    dpdt[N-1] = dataflow< simple_osc_operation_action >( find_here() ,
+                                                  q[N-1] ,
+                                                  dpdt[N-1] );
+    //std::cout << "-------" << std::endl;
+}
+
 
 shared_vec sync_identity( shared_vec x , shared_vec sync1 , shared_vec sync2 , shared_vec sync3 )
 {
@@ -141,14 +189,33 @@ void synchronized_swap( state_type &x_in , state_type &x_out )
 
 double energy( const dvec &q , const dvec &p )
 {
+    using std::pow;
+    using std::abs;
     using boost::math::pow;
     const size_t N=q.size();
     double e(0.0);
     for( size_t n=0 ; n<N-1 ; ++n )
     {
-        e += 0.5*pow<2>( p[0] ) + 0.25*pow<4>( q[0] ) + pow<6>( q[0] - q[1] )/6.0;
+        e += 0.5*pow<2>( p[n] ) 
+            + pow( abs(q[n]) , KAPPA )/KAPPA 
+            + pow( abs(q[n]-q[n+1]) , LAMBDA )/LAMBDA;
     }
-    e += 0.5*pow<2>( p[N-1] ) + 0.25*pow<4>( q[N-1] ) + pow<6>( q[N-1] - q[0] )/6.0;
+    e += 0.5*pow<2>( p[N-1] ) 
+        + pow( abs(q[N-1]) , KAPPA )/KAPPA 
+        + pow( abs(q[N-1]-q[0]) , LAMBDA )/LAMBDA;
+    return e;
+}
+
+double simple_energy( const dvec &q , const dvec &p )
+{
+    using boost::math::pow;
+    const size_t N=q.size();
+    double e(0.0);
+    for( size_t n=0 ; n<N ; ++n )
+    {
+        e += 0.5*pow<2>( p[0] ) 
+            + pow<4>( q[0] )/4.0;
+    }
     return e;
 }
 
@@ -179,8 +246,8 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     const std::size_t N = N_/M;
 
-    std::clog << "number of dataflows: " << N << ", number of elements per dataflow: " << M;
-    std::clog <<  ", steps: " << steps << ", dt: " << dt << std::endl;
+    // std::clog << "number of dataflows: " << N << ", number of elements per dataflow: " << M;
+    // std::clog <<  ", steps: " << steps << ", dt: " << dt << std::endl;
 
     state_type q_in( N );
     state_type p_in( N );
@@ -193,10 +260,10 @@ int hpx_main(boost::program_options::variables_map& vm)
                                                  std::allocate_shared< dvec >( std::allocator<dvec>() ) ,
                                                  M ,
                                                  0.0 );
-        p_in[i] = dataflow< initialize_action >( find_here() , 
-                                                 std::allocate_shared< dvec >( std::allocator<dvec>() ) ,
-                                                 M ,
-                                                 1.0 );
+        p_in[i] = dataflow< initialize_random_action >( find_here() , 
+                                                        std::allocate_shared< dvec >( std::allocator<dvec>() ) ,
+                                                        M ,
+                                                        i );
         q_out[i] = dataflow< initialize_action >( find_here() , 
                                                   std::allocate_shared< dvec >( std::allocator<dvec>() ) ,
                                                   M ,
@@ -207,6 +274,18 @@ int hpx_main(boost::program_options::variables_map& vm)
                                                  0.0 );
 
     }
+
+    std::vector< future<shared_vec> > futures_q( N );
+    std::vector< future<shared_vec> > futures_p( N );
+    for( size_t i=0 ; i<N ; ++i )
+    {
+        futures_q[i] = q_in[i].get_future();
+        futures_p[i] = p_in[i].get_future();
+    }
+
+    wait( futures_q );
+    wait( futures_p );
+    // std::clog << "Initialization complete, energy: " << energy( futures_q , futures_p ) << std::endl;
 
     hpx::util::high_resolution_timer timer;
     
@@ -221,33 +300,37 @@ int hpx_main(boost::program_options::variables_map& vm)
                          t*dt , 
                          out , 
                          dt );
-        //synchronized_swap( q_in , q_out );
-        //synchronized_swap( p_in , p_out );
+        synchronized_swap( q_in , q_out );
+        synchronized_swap( p_in , p_out );
     }
 
-    std::clog << "Dependency tree built" << std::endl;
-
-    std::vector< future<shared_vec> > futures_q( N );
-    std::vector< future<shared_vec> > futures_p( N );
     for( size_t i=0 ; i<N ; ++i )
     {
         futures_q[i] = q_in[i].get_future();
         futures_p[i] = p_in[i].get_future();
     }
-    
+
     // here we wait for the results
     wait( futures_q );
     wait( futures_p );
     //wait( futures_out );
 
-    std::clog << "Calculation finished in " << timer.elapsed() << "s" << std::endl;
+    auto computation_time = timer.elapsed();
 
-    std::clog << "Final energy: " << energy( futures_q , futures_p ) << std::endl;
+    // std::clog << "Calculation finished in " << computation_time << "s" << std::endl;
 
-    // print the values
+    cout << (boost::format("%d") % (N_/M) ) << '\t' << (boost::format("%d") % M);
+    cout << '\t' << (boost::format("%fs") % computation_time) << "\n" << flush;
+
+    // std::clog << "Final energy: " << energy( futures_q , futures_p ) << std::endl;
+
+    //print the values
     // for( size_t i=0 ; i<N ; ++i )
     //     for( size_t m=0 ; m<M ; m++ )
-    //         std::cout << (*(futures_q[i].get()))[m] << '\t';
+    //     {
+    //         std::cout << (*(futures_q[i].get()))[m] << ',';
+    //         std::cout << (*(futures_p[i].get()))[m] << '\t';
+    //     }
     // std::cout << std::endl;
 
     
