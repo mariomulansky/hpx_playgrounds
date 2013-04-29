@@ -51,9 +51,9 @@ struct dataflow_shared_algebra_global
         const size_t N = boost::size( s1 );
         for( size_t i=0 ; i<N ; ++i )
         {
-            s1[i] = dataflow< operation3_global_action >( find_here() ,
+            s1[i] = dataflow< operation3_global_action<Op> >( find_here() ,
                                                           s1[i] , s2[i] , s3[i] , 
-                                                          op.m_alpha1 , op.m_alpha2 );
+                                                          op );
         }
     }
 };

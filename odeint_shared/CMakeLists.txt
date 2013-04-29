@@ -25,3 +25,8 @@ add_hpx_executable(coupled_oscillators
     ESSENTIAL
     SOURCES coupled_oscillators.cpp dataflow_shared_operations.cpp
     DEPENDENCIES dataflow iostreams )
+
+add_hpx_executable(coupled_oscillators_perf
+    ESSENTIAL
+    SOURCES coupled_oscillators_perf.cpp dataflow_shared_operations.cpp
+    DEPENDENCIES dataflow iostreams )
