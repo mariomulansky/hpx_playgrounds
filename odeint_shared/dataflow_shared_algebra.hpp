@@ -7,6 +7,7 @@
 
 using hpx::lcos::dataflow;
 using hpx::lcos::dataflow_base;
+using hpx::lcos::future;
 using hpx::find_here;
 
 

@@ -36,7 +36,7 @@ shared_vector initialize_random( shared_vector x , const int size , const int se
     std::uniform_real_distribution<double> distribution(0.0f, 1.0f);
     std::mt19937 engine( seed ); // Mersenne twister MT19937
     auto generator = std::bind(distribution, engine);
-    std::generate( x->begin() , x->end() , generator); 
+    std::generate( x->begin() , x->end() , generator );
     return x;
 }
 
