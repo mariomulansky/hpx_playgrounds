@@ -33,14 +33,27 @@ shared_vector initialize_random( shared_vector x , const int size , const int se
 {
     x->resize( size );
 
-    std::uniform_real_distribution<double> distribution(0.0f, 1.0f);
+    std::uniform_real_distribution<double> distribution(0.0);
     std::mt19937 engine( seed ); // Mersenne twister MT19937
     auto generator = std::bind(distribution, engine);
-    std::generate( x->begin() , x->end() , generator );
+    std::generate( x->begin() , x->begin() , generator );
     return x;
 }
 
 HPX_PLAIN_ACTION( initialize_random , initialize_random_action );
+
+shared_vector initialize_random_part( shared_vector x , const int size , const int start , const int end , const int seed=0 , const double value=0.0 )
+{
+    x->resize( size );
+
+    std::uniform_real_distribution<double> distribution(0.0, value);
+    std::mt19937 engine( seed ); // Mersenne twister MT19937
+    auto generator = std::bind(distribution, engine);
+    std::generate( x->begin()+start , x->begin()+end , generator );
+    return x;
+}
+
+HPX_PLAIN_ACTION( initialize_random_part , initialize_random_part_action );
 
 
 shared_vector hpx_resize( shared_vector x , const int size )

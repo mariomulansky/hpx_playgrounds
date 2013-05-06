@@ -17,8 +17,8 @@ typedef std::vector< double > dvec;
 typedef std::shared_ptr< dvec > shared_vector;
 
 template< typename Operation >
-shared_vector operation3_global( shared_vector x1 , const shared_vector &x2 , 
-                                 const shared_vector &x3 , Operation op )
+shared_vector operation3( shared_vector x1 , const shared_vector &x2 , 
+                          const shared_vector &x3 , Operation op )
 {
     for( size_t i=0 ; i<x1->size() ; ++i )
         op( (*x1)[i] , (*x2)[i] , (*x3)[i] );
@@ -27,16 +27,18 @@ shared_vector operation3_global( shared_vector x1 , const shared_vector &x2 ,
 
 
 template< typename Operation >
-struct operation3_global_action
-    : hpx::actions::make_action<shared_vector (*)( shared_vector , const shared_vector & , const shared_vector & , Operation ),
-                                &operation3_global< Operation >, operation3_global_action< Operation > >
+struct operation3_action
+    : hpx::actions::make_action<
+    shared_vector (*)( shared_vector , 
+                       const shared_vector& , 
+                       const shared_vector& , 
+                       Operation op ) , 
+    &operation3<Operation>, 
+    operation3_action<Operation> >
 {};
 
 
-HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
-    (template < typename Operation>),
-    (operation3_global_action< Operation>)
-)
+HPX_REGISTER_PLAIN_ACTION_TEMPLATE((template < typename Operation>),(operation3_action< Operation>))
 
 
 //HPX_PLAIN_ACTION( operation3_global , operation3_global_action );

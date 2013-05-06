@@ -13,8 +13,9 @@ link_directories( ${HPX_LIBRARY_DIR} )
 
 add_hpx_executable(test
     ESSENTIAL
-    SOURCES test.cpp dataflow_shared_operations.cpp
-    DEPENDENCIES dataflow )
+    SOURCES test.cpp
+    DEPENDENCIES dataflow
+)
 
 add_hpx_executable(test_shared_dataflow
     ESSENTIAL
@@ -23,10 +24,15 @@ add_hpx_executable(test_shared_dataflow
 
 add_hpx_executable(coupled_oscillators
     ESSENTIAL
-    SOURCES coupled_oscillators.cpp dataflow_shared_operations.cpp
+    SOURCES coupled_oscillators.cpp
     DEPENDENCIES dataflow iostreams )
 
 add_hpx_executable(coupled_oscillators_perf
     ESSENTIAL
-    SOURCES coupled_oscillators_perf.cpp dataflow_shared_operations.cpp
+    SOURCES coupled_oscillators_perf.cpp
+    DEPENDENCIES dataflow iostreams )
+
+add_hpx_executable(spreading_perf
+    ESSENTIAL
+    SOURCES spreading_perf.cpp
     DEPENDENCIES dataflow iostreams )

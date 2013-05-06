@@ -34,15 +34,6 @@ typedef std::shared_ptr< dvec > shared_vec;
 typedef std::vector< dataflow_base< shared_vec > > state_type;
 typedef std::vector< dvec > vec_dvec;
 
-// add serialization to shared_ptr
-namespace boost { namespace serialization {
-template<class Archive>
-void serialize(Archive & ar, shared_vec &v , const unsigned int version)
-{
-    // empty for now
-}
-} }
-
 
 typedef euler< state_type , double , state_type , double , dataflow_shared_algebra , dataflow_operations > stepper_type;
 //typedef euler< state_type > stepper_type;

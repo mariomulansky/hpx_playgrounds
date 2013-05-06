@@ -25,7 +25,6 @@
 #include "dataflow_shared_resize.hpp"
 #include "dataflow_shared_algebra.hpp"
 #include "dataflow_shared_operations.hpp"
-#include "dataflow_shared_operations_global.hpp"
 #include "serialization.hpp"
 
 using hpx::async;

@@ -48,40 +48,33 @@ struct dataflow_operations
     };
 };
 
+namespace hpx_odeint_actions {
 
-struct dataflow_shared_actions
-{
-    //typedef dvec vector_type;
-
-    struct operation3 : managed_component_base< operation3 >
+    template< typename S , typename Operation >
+    S operation3( S x1 , const S &x2 , const S &x3 , 
+                  Operation op )
     {
+        for( size_t i=0 ; i<x1->size() ; ++i )
+            op( (*x1)[i] , (*x2)[i] , (*x3)[i] );
+        return x1;
+    }
 
-        //template< typename S1 , typename S2 , typename S3 , typename Operation >
-        // for now just one state type to reduce compile time
-        template< typename S , typename Operation >
-        S apply( S x1 , const S &x2 , const S &x3 , const Operation &op )
-        {
-            for( size_t i=0 ; i<x1->size() ; ++i )
-                op( (*x1)[i] , (*x2)[i] , (*x3)[i] );
-            return x1;
-        }
 
-        // action definition for template member function
-        //template< typename S1 , typename S2 , typename S3 , typename Operation >
-        // for now just one state type to reduce compile time
-        template< typename S , typename Operation >
-        struct operation3_action
-            : hpx::actions::make_action<S (operation3::*)( S , const S & , const S & , const Operation& ),
-                                        &operation3::template apply< S , Operation >, operation3_action< S , Operation > >
-        {};
+    template< typename S , typename Operation >
+    struct operation3_action
+        : hpx::actions::make_action<
+        S (*)( S , 
+               const S& , 
+               const S& , 
+               Operation op ) , 
+        &operation3<S,Operation>, 
+        operation3_action<S,Operation> >
+    {};
 
-    };
+}
 
-};
-
-HPX_REGISTER_ACTION_DECLARATION_TEMPLATE(
-    (template < typename S , typename Operation>),
-    (dataflow_shared_actions::operation3::operation3_action<S , Operation>)
-)
+HPX_REGISTER_PLAIN_ACTION_TEMPLATE(
+    (template< typename S , typename Operation >),
+    (hpx_odeint_actions::operation3_action< S , Operation >))
 
 #endif
