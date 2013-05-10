@@ -19,15 +19,15 @@ namespace checked_math {
             // 0**y = 0, don't care for y = 0 or NaN
             return 0.0;
         using std::pow;
-        return pow( x , y );
+        using std::abs;
+        return pow( abs(x) , y );
     }
 }
 
 double signed_pow( double x , double k )
 {
     using boost::math::sign;
-    using std::abs;
-    return checked_math::pow( abs(x) , k ) * sign(x);
+    return checked_math::pow( x , k ) * sign(x);
 }
 
 
@@ -48,54 +48,74 @@ struct lattice2d {
     template< class StateIn , class StateOut >
     void operator()( const StateIn &q , StateOut &dpdt )
     {
+        // std::cout << "system" << std::endl;
         // q and dpdt are 2d
-        const size_t N = q.size();
-        const size_t M = q[0].size();
+        const int N = q.size();
+        const int M = q[0].size();
 
         double coupling_lr( 0.0 );
         std::vector<double> coupling_ud( M , 0.0 );
-        bool first( true );
+        int last_i = -1;
 
 #ifndef NO_OMP
-#pragma omp parallel for firstprivate( coupling_lr , coupling_ud , first ) schedule( dynamic , m_block_size )
+#pragma omp parallel for firstprivate( coupling_lr , coupling_ud , last_i ) schedule( dynamic , m_block_size )
 #endif	
-        for( size_t i = 0 ; i < N ; ++i )
+        for( int i=0 ; i<N ; ++i )
         {
-            // initialize temporaries in each thread
-            if( first )
+            // non-continuous execution
+            if( i != (last_i+1) )
             {
-                for( size_t j = 0 ; j < M ; ++j )
+                // initialize temporaries in each thread
+                for( size_t j=0 ; j<M ; ++j )
                 {
                     if( i > 0 )
                         coupling_ud[j] = signed_pow( q[i-1][j]-q[i][j] , m_lam-1 );
                     else
                         coupling_ud[j] = 0.0;
+                    //std::cout << coupling_ud[j] << std::endl;
                 }
                 coupling_lr = 0.0;
-                first = false;
             }
 
             // actual work
-            for( size_t j = 0 ; j < M ; ++j )
+            for( size_t j=0 ; j<M-1 ; ++j )
             {
-                dpdt[i][j] = - signed_pow( q[i][j] , m_kap-1 )
+                dpdt[i][j] = -signed_pow( q[i][j] , m_kap-1 )
                     + coupling_lr + coupling_ud[j];
-                if( j<M-1 )
-                    coupling_lr = signed_pow( q[i][j]-q[i][j+1] , m_lam-1 );
-                else
-                    coupling_lr = 0.0;
+                coupling_lr = signed_pow( q[i][j]-q[i][j+1] , m_lam-1 );
                 if( i<N-1 )
                     coupling_ud[j] = signed_pow( q[i][j]-q[i+1][j] , m_lam-1 );
                 else
                     coupling_ud[j] = 0.0;
                 dpdt[i][j] -= coupling_lr + coupling_ud[j];
+                //std::cout << dpdt[i][j] << ": " << q[i][j] << std::endl;
             }
+            dpdt[i][M-1] = -signed_pow( q[i][M-1] , m_kap-1 )
+                + coupling_lr + coupling_ud[M-1];
+            coupling_lr = 0.0;
+            if( i<N-1 )
+                coupling_ud[M-1] = signed_pow( q[i][M-1]-q[i+1][M-1] , m_lam-1 );
+            else
+                coupling_ud[M-1] = 0.0;
+            dpdt[i][M-1] -= coupling_ud[M-1];
+            last_i = i;
         }
+
+        // for( int i=0 ; i<N ; ++i )
+        // {
+        //     for( int j=0 ; j<M ; ++j )
+        //     {
+        //         std::cout << dpdt[i][j] << '\t';
+        //     }
+        //     std::cout << std::endl;
+        // }
+
     }
 
     template< class StateIn >
     double energy( const StateIn &q , const StateIn &p )
     {
+        using checked_math::pow;
         // q and dpdt are 2d
         const size_t N = q.size();
         const size_t M = q[0].size();
@@ -111,30 +131,30 @@ struct lattice2d {
 
 #pragma omp for reduction(+:energy) schedule( dynamic , m_block_size )
 #endif //NO_OMP
-            for( size_t i = 0 ; i < N-1 ; ++i )
+            for( size_t i=0 ; i<N-1 ; ++i )
             {
-                for( size_t j = 0 ; j < M-1 ; ++j )
+                for( size_t j=0 ; j<M-1 ; ++j )
                 {
                     energy += p[i][j]*p[i][j] / 2.0
-                        + signed_pow( q[i][j] , m_kap ) / m_kap
-                        + signed_pow( q[i][j]-q[i][j+1] , m_lam ) / m_lam
-                        + signed_pow( q[i][j]-q[i+1][j] , m_lam ) / m_lam;
+                        + pow( q[i][j] , m_kap ) / m_kap
+                        + pow( q[i][j]-q[i][j+1] , m_lam ) / m_lam
+                        + pow( q[i][j]-q[i+1][j] , m_lam ) / m_lam;
                 }
                 energy += p[i][M-1]*p[i][M-1] / 2.0
-                    + signed_pow( q[i][M-1] , m_kap ) / m_kap
-                    + signed_pow( q[i][M-1]-q[i+1][M-1] , m_lam ) / m_lam;
+                    + pow( q[i][M-1] , m_kap ) / m_kap
+                    + pow( q[i][M-1]-q[i+1][M-1] , m_lam ) / m_lam;
             }
 #ifndef NO_OMP
         }
 #endif
-        for( size_t j = 0 ; j < M-1 ; ++j )
+        for( size_t j=0 ; j<M-1 ; ++j )
         {
             energy += p[N-1][j]*p[N-1][j] / 2.0
-                + signed_pow( q[N-1][j] , m_kap ) / m_kap
-                + signed_pow( q[N-1][j]-q[N-1][j+1] , m_lam ) / m_lam;
+                + pow( q[N-1][j] , m_kap ) / m_kap
+                + pow( q[N-1][j]-q[N-1][j+1] , m_lam ) / m_lam;
         }
         energy += p[N-1][M-1]*p[N-1][M-1] / 2.0
-            + signed_pow( q[N-1][M-1] , m_kap ) / m_kap;
+            + pow( q[N-1][M-1] , m_kap ) / m_kap;
         return energy;
     }
 

@@ -6,10 +6,12 @@
 
 #include <boost/numeric/odeint.hpp>
 #include <boost/timer/timer.hpp>
+#include <boost/foreach.hpp>
 
 #include "lattice2d.hpp"
 #include "nested_range_algebra_omp.hpp"
 #include "resize.hpp"
+#include "spreading_observer.hpp"
 
 using boost::numeric::odeint::symplectic_rkn_sb3a_mclachlan;
 using boost::numeric::odeint::range_algebra;
@@ -50,6 +52,8 @@ int main( int argc , char* argv[] )
         init_length = atoi( argv[4] );    
     if( argc > 5 )
         steps = atoi( argv[5] );
+    if( argc > 6 )
+        dt = atof( argv[6] );
 
     std::cout << "Size: " << N1 << "x" << N2 << " with " << block_size << " rows per thread" << std::endl;
 
@@ -57,25 +61,38 @@ int main( int argc , char* argv[] )
     state_type q( N1 , dvec( N2 , 0.0 ) );
     state_type p( N1 , dvec( N2 , 0.0 ) );
 
-    std::uniform_real_distribution<double> distribution(0.0);
-    std::mt19937 engine( 0 ); // Mersenne twister MT19937
-    auto generator = std::bind(distribution, engine);
-
     //fully random
     // for( size_t i=0 ; i<N1 ; ++i )
     // {
+    //     std::uniform_real_distribution<double> distribution( 0.0 );
+    //     std::mt19937 engine( i ); // Mersenne twister MT19937
+    //     auto generator = std::bind( distribution , engine );
     //     std::generate( p[i].begin() , p[i].end() , generator );
     // }
 
     //partly random
     for( size_t i=N1/2-init_length/2 ; i<N1/2+init_length/2 ; ++i )
     {
-        std::generate( p[i].begin()+N2/2-init_length/2 , 
-                       p[i].begin()+N2/2+init_length/2 , 
+        std::uniform_real_distribution<double> distribution( 0.0 );
+        std::mt19937 engine( i ); // Mersenne twister MT19937
+        auto generator = std::bind( distribution , engine );
+        std::generate( p[i].begin()+N2/2-init_length/2 ,
+                       p[i].begin()+N2/2+init_length/2 ,
                        generator );
     }
 
+    // for( int i=0 ; i<N1 ; ++i )
+    // {
+    //     for( int j=0 ; j<N2 ; ++j )
+    //     {
+    //         std::cout << q[i][j] << "," << p[i][j] << '\t';
+    //     }
+    //     std::cout << std::endl;
+    // }
+
+
     lattice2d system( KAPPA , LAMBDA , beta , block_size );
+    spreading_observer obs( KAPPA , LAMBDA , beta , block_size );
 
     std::cout << "Initial energy: " << system.energy( q , p ) << std::endl;
 
@@ -86,11 +103,26 @@ int main( int argc , char* argv[] )
                        system , 
                        std::make_pair( std::ref(q) , std::ref(p) ) , 
                        0.0 , dt , steps );
+                       //std::ref(obs) );
 
     }
 
     // std::cout << "Time: " << elapsed << std::endl;
     std::cout << "Final energy: " << system.energy( q , p ) << std::endl;
 
+    std::pair< double , double > x;
+    BOOST_FOREACH( x , obs.m_values )
+    {
+        std::cout << x.first << "\t" << x.second << std::endl;
+    }
+
+    // for( int i=0 ; i<N1 ; ++i )
+    // {
+    //     for( int j=0 ; j<N2 ; ++j )
+    //     {
+    //         std::cout << q[i][j] << "," << p[i][j] << '\t';
+    //     }
+    //     std::cout << std::endl;
+    // }
     return 0;
 }

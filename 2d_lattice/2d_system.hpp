@@ -29,7 +29,8 @@ namespace checked_math {
             // 0**y = 0, don't care for y = 0 or NaN
             return 0.0;
         using std::pow;
-        return pow( x , y );
+        using std::abs;
+        return pow( abs(x) , y );
     }
 }
 
@@ -37,7 +38,7 @@ double signed_pow( double x , double k )
 {
     using boost::math::sign;
     using std::abs;
-    return checked_math::pow( abs(x) , k ) * sign(x);
+    return checked_math::pow( x , k ) * sign(x);
 }
 
 typedef std::vector< double > dvec;
@@ -46,11 +47,11 @@ typedef std::shared_ptr< dvecvec > shared_vecvec;
 typedef std::vector< dataflow_base< shared_vec > > state_type;
 
 
-shared_vecvec system_first_block( shared_vecvec q , shared_vecvec q_d , shared_vecvec dpdt )
+shared_vecvec system_first_block( shared_vecvec q , shared_vecvec q_d , shared_vecvec dpdt , int n )
 {
     const size_t N = q->size();
 
-    //hpx::cout << (boost::format("system first block sizes %d , %d\n") % N % M) << hpx::flush;
+    //hpx::cout << (boost::format("block %d\n") % n ) << hpx::flush;
 
     double coupling_lr = 0.0;
     const size_t M = (*q)[0].size();
@@ -88,13 +89,13 @@ shared_vecvec system_first_block( shared_vecvec q , shared_vecvec q_d , shared_v
 HPX_PLAIN_ACTION(system_first_block, system_first_block_action);
 
 shared_vecvec system_center_block( shared_vecvec q , shared_vecvec q_u , 
-                                   shared_vecvec q_d , shared_vecvec dpdt )
+                                   shared_vecvec q_d , shared_vecvec dpdt , int n )
 {
     using checked_math::pow;
     const size_t N = q->size();
     const size_t M = (*q)[0].size();
 
-    //hpx::cout << (boost::format("system center block sizes %d , %d\n") % N % M) << hpx::flush;
+    //hpx::cout << (boost::format("block %d\n")%n) << hpx::flush;
 
     double coupling_lr = 0.0;
     dvec coupling_ud( M );
@@ -148,13 +149,13 @@ shared_vecvec system_center_block( shared_vecvec q , shared_vecvec q_u ,
 HPX_PLAIN_ACTION(system_center_block, system_center_block_action);
 
 
-shared_vecvec system_last_block( shared_vecvec q , shared_vecvec q_u , shared_vecvec dpdt )
+shared_vecvec system_last_block( shared_vecvec q , shared_vecvec q_u , shared_vecvec dpdt , int n )
 {
     using checked_math::pow;
     const size_t N = q->size();
     const size_t M = (*q)[0].size();
 
-    //hpx::cout << (boost::format("system last block sizes %d , %d\n") % N % M) << hpx::flush;
+    //hpx::cout << (boost::format("block %d\n")%n) << hpx::flush;
 
     double coupling_lr = 0.0;
     dvec coupling_ud( M );
@@ -209,14 +210,24 @@ HPX_PLAIN_ACTION(system_last_block, system_last_block_action);
 void system_2d( const state_type &q , state_type &dpdt )
 {
     const size_t N = q.size();
+    //state_type dpdt_(N);
     // first row
-    dpdt[0] = dataflow< system_first_block_action >( find_here() , q[0] , q[1] , dpdt[0] );
+    dpdt[0] = dataflow< system_first_block_action >( find_here() , q[0] , q[1] , dpdt[0] , 0 );
     // middle rows
     for( size_t i=1 ; i<N-1 ; i++ )
     {
-        dpdt[i] = dataflow< system_center_block_action >( find_here() , q[i] , q[i-1] , q[i+1] , dpdt[i] );
+        dpdt[i] = dataflow< system_center_block_action >( find_here() , q[i] , q[i-1] , q[i+1] , dpdt[i] , i );
     }
-    dpdt[N-1] = dataflow< system_last_block_action >( find_here() , q[N-1] , q[N-2] , dpdt[N-1] );
+    dpdt[N-1] = dataflow< system_last_block_action >( find_here() , q[N-1] , q[N-2] , dpdt[N-1] , N-1);
+
+    // coupling synchronization step
+    // dpdt[0] = dataflow< sys_sync1_action >( fing_here() , dpdt_[0] , dpdt_[1] );
+    // for( size_t i=1 ; i<N-1 ; i++ )
+    // {
+    //     dpdt[i] = dataflow< sys_sync2_action >( find_here() , dpdt_[i] , dpdt_[i] , q[i+1] , dpdt[i] );
+    // }
+    // dpdt_[N-1] = dataflow< system_last_block_action >( find_here() , q[N-1] , q[N-2] , dpdt[N-1] );
+
 }
 
 

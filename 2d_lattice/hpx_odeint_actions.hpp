@@ -92,4 +92,23 @@ shared_vector hpx_resize_2d( shared_vector x , shared_vector y )
 
 HPX_PLAIN_ACTION( hpx_resize_2d , hpx_resize_2d_action );
 
+template< typename T1 , typename T2 >
+T1 sync1( T1 x , T2 sync )
+{
+    return x;
+}
+
+template< typename T1 , typename T2 >
+struct sync1_action
+    : hpx::actions::make_action<
+    T1 (*)( T1 , T2 ) , 
+      &sync1<T1,T2>, 
+      sync1_action<T1,T2> >
+{};
+
+HPX_REGISTER_PLAIN_ACTION_TEMPLATE(
+    (template< typename T1 , typename T2 >),
+    (sync1_action< T1 , T2 >))
+
+
 #endif

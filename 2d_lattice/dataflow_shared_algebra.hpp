@@ -25,13 +25,14 @@ namespace hpx_odeint_actions {
 
     template< typename S , typename Operation >
     struct operation2d_3_action
-        : hpx::actions::make_action<
+        : hpx::actions::make_direct_action<
         S (*)( S , 
                const S& , 
                const S& , 
                Operation op ) , 
         &operation2d_3<S,Operation>, 
         operation2d_3_action<S,Operation> >
+    //        boost::mpl::true_ >
     {};
 
 }

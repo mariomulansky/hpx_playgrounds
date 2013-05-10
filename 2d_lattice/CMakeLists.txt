@@ -8,6 +8,7 @@ set(CMAKE_MODULE_PATH
 # Instruct cmake to find the HPX settings
 find_package(HPX)
 
+include_directories( /home/mario/odeint-v2 )
 include_directories( ${HPX_INCLUDE_DIR} )
 link_directories( ${HPX_LIBRARY_DIR} )
 

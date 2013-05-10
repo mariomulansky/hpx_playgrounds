@@ -14,6 +14,7 @@
 #include <hpx/lcos/async.hpp>
 
 #include <boost/numeric/odeint.hpp>
+#include <boost/foreach.hpp>
 
 #include "dataflow_shared_resize.hpp"
 #include "dataflow_shared_algebra.hpp"
@@ -21,6 +22,7 @@
 #include "serialization.hpp"
 #include "2d_system.hpp"
 #include "hpx_odeint_actions.hpp"
+#include "spreading_observer.hpp"
 
 using hpx::async;
 using hpx::lcos::future;
@@ -52,14 +54,14 @@ shared_vec sync_identity( shared_vec x , shared_vec sync1 , shared_vec sync2 , s
     return x;
 }
 
-HPX_PLAIN_ACTION( sync_identity , sync_identity_action )
+HPX_PLAIN_DIRECT_ACTION( sync_identity , sync_identity_action )
 
 shared_vec sync_identity2( shared_vec x , shared_vec sync1 )
 {
     return x;
 }
 
-HPX_PLAIN_ACTION( sync_identity2 , sync_identity2_action )
+HPX_PLAIN_DIRECT_ACTION( sync_identity2 , sync_identity2_action )
 
 // syncronized swap emulating nearest neighbor coupling
 void synchronized_swap( state_type &x_in , state_type &x_out )
@@ -92,6 +94,7 @@ int hpx_main(boost::program_options::variables_map& vm)
     const std::size_t N2 = vm["N2"].as<std::size_t>();
     const std::size_t G = vm["G"].as<std::size_t>();
     const bool fully_random = vm["fully_random"].as<bool>();
+    const bool do_observation = vm["observe"].as<bool>();
     const std::size_t init_length = vm["init_length"].as<std::size_t>();
     const std::size_t steps = vm["steps"].as<std::size_t>();
     const double dt = vm["dt"].as<double>();
@@ -112,13 +115,13 @@ int hpx_main(boost::program_options::variables_map& vm)
         for( size_t j=0 ; j<N1 ; j++ )
             std::generate( p_init[j].begin() , 
                            p_init[j].end() , 
-                           generator );
+                           std::ref(generator) );
     } else
     {
         for( size_t j=N1/2-init_length/2 ; j<N1/2+init_length/2 ; j++ )
             std::generate( p_init[j].begin()+N2/2-init_length/2 , 
                            p_init[j].begin()+N2/2+init_length/2 , 
-                           generator );
+                           std::ref(generator) );
     }
 
     state_type q_in( M );
@@ -162,6 +165,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     wait( futures_q );
     wait( futures_p );
+    std::clog.precision(10);
     std::clog << "Initialization complete, energy: " << energy( futures_q , futures_p ) << std::endl;
 
     // std::cout.precision(10);
@@ -181,6 +185,7 @@ int hpx_main(boost::program_options::variables_map& vm)
     hpx::util::high_resolution_timer timer;
 
     stepper_type stepper;
+    spreading_observer obs;
 
     for( size_t t=0 ; t<steps ; ++t )
     {
@@ -191,6 +196,15 @@ int hpx_main(boost::program_options::variables_map& vm)
                          t*dt , 
                          out , 
                          dt );
+
+        // std::swap( q_in , q_out );
+        // std::swap( p_in , p_out );
+
+        if( do_observation && ((t%10) == 0) )
+        {
+            obs( q_out , p_out , t*dt );
+        }
+
         synchronized_swap( q_in , q_out );
         synchronized_swap( p_in , p_out );
     }
@@ -206,6 +220,23 @@ int hpx_main(boost::program_options::variables_map& vm)
     hpx::cout << (boost::format("runtime: %fs\n") %timer.elapsed()) << hpx::flush;
 
     std::clog << "Integration complete, energy: " << energy( futures_q , futures_p ) << std::endl;
+
+    std::cout.precision(10);
+
+
+    // get the spreading
+    std::pair< double , std::vector< dataflow_base<double> > > x;
+    BOOST_FOREACH( x , obs.m_values )
+    {
+        hpx::cout << (boost::format("%f\t") % (x.first) );
+        double d = 0.0;
+        BOOST_FOREACH( dataflow_base<double> df , x.second )
+        {
+            d += df.get_future().get();
+        }
+        hpx::cout << (boost::format("%f\n") % d );
+    }
+    hpx::cout << hpx::flush;
 
     // //print the values
     // for( size_t m=0 ; m<M ; ++m )
@@ -252,6 +283,11 @@ int main( int argc , char* argv[] )
         ( "init_length",
           boost::program_options::value<std::size_t>()->default_value(32),
           "Initial excitation length (32)")
+        ;
+    desc_commandline.add_options()
+        ( "observe",
+          boost::program_options::value<bool>()->default_value(false),
+          "Spreading observation (false)")
         ;
 
     desc_commandline.add_options()
