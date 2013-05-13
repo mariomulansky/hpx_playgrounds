@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8.4 FATAL_ERROR)
 project (test CXX)
 
 set(CMAKE_MODULE_PATH 
-       /home/mario/hpx/share/cmake-2.8/Modules
+                      $ENV{HPX_ROOT}/share/cmake-2.8/Modules
 )
 
 # Instruct cmake to find the HPX settings

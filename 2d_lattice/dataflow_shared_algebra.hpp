@@ -25,7 +25,7 @@ namespace hpx_odeint_actions {
 
     template< typename S , typename Operation >
     struct operation2d_3_action
-        : hpx::actions::make_direct_action<
+        : hpx::actions::make_action<
         S (*)( S , 
                const S& , 
                const S& , 
