@@ -99,7 +99,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     std::size_t G = 8;
 
-    while( G < N1/hpx::get_os_thread_count() )
+    while( G <= N1/hpx::get_os_thread_count() )
     {
 
         const std::size_t M = N1/G;
