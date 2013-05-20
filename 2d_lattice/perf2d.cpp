@@ -93,14 +93,13 @@ int hpx_main(boost::program_options::variables_map& vm)
     const std::size_t N1 = vm["N1"].as<std::size_t>();
     const std::size_t N2 = vm["N2"].as<std::size_t>();
     const bool fully_random = vm["fully_random"].as<bool>();
-    const bool do_observation = vm["observe"].as<bool>();
     const std::size_t init_length = vm["init_length"].as<std::size_t>();
     const std::size_t steps = vm["steps"].as<std::size_t>();
     const double dt = vm["dt"].as<double>();
 
     std::size_t G = 8;
 
-    while( G < N1/8 )
+    while( G < N1/hpx::get_os_thread_count() )
     {
 
         const std::size_t M = N1/G;
@@ -237,12 +236,6 @@ int main( int argc , char* argv[] )
           boost::program_options::value<std::size_t>()->default_value(32),
           "Initial excitation length (32)")
         ;
-    desc_commandline.add_options()
-        ( "observe",
-          boost::program_options::value<bool>()->default_value(false),
-          "Spreading observation (false)")
-        ;
-
     desc_commandline.add_options()
         ( "steps",
           boost::program_options::value<std::size_t>()->default_value(10),
