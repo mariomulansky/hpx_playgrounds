@@ -106,7 +106,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     dvecvec p_init( N1 , dvec( N2 , 0.0 ) );
 
-    std::uniform_real_distribution<double> distribution(0.0);
+    std::uniform_real_distribution<double> distribution( -1.0 , 1.0 );
     std::mt19937 engine( 0 ); // Mersenne twister MT19937
     auto generator = std::bind(distribution, engine);
 
@@ -170,7 +170,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     // std::cout.precision(10);
 
-    //print the values
+    // //print the values
     // for( size_t m=0 ; m<M ; ++m )
     //     for( size_t g=0 ; g<G ; g++ )
     //     {
