@@ -17,3 +17,15 @@ add_hpx_executable(test_local_dataflow
     SOURCES test_local_dataflow.cpp
     DEPENDENCIES iostreams
 )
+
+add_hpx_executable(test2d
+    ESSENTIAL
+    SOURCES test2d.cpp
+    DEPENDENCIES iostreams
+)
+
+add_hpx_executable(const_test
+    ESSENTIAL
+    SOURCES const_test.cpp
+    DEPENDENCIES iostreams
+)

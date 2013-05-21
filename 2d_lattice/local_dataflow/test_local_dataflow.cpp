@@ -24,25 +24,29 @@ using hpx::lcos::wait;
 
 typedef future< double > future_type;
 
-struct mul 
+struct operations
 {
-    const double a;
-
-    mul( const double alpha ) : a( alpha )
-    { }
-
-    double operator() ( const double x )
+    template< typename Value >
+    struct mul 
     {
-        return x*a;
-    }
+        const Value a;
+
+        mul( const Value alpha ) : a( alpha )
+        { }
+
+        template< typename T1 , typename T2 >
+        T1 operator() ( T1 x1 , T2 x2 ) const
+        {
+            return x1*x2*a;
+        }
+    };
 };
 
 int main()
 {
-    
     future_type f = hpx::make_ready_future( 1.0 );
 
-    future_type f2 = dataflow( mul( 0.5 ) , f );
+    future_type f2 = dataflow( operations::mul<double>( 0.5 ) , f , f );
 
     hpx::cout << boost::format("%d\n") % f2.get() << hpx::flush;
 

@@ -11,18 +11,12 @@
 #include <boost/numeric/odeint/util/resize.hpp>
 #include <boost/numeric/odeint/util/same_size.hpp>
 
-#include <hpx/include/actions.hpp>
-#include <hpx/components/dataflow/dataflow.hpp>
-#include <hpx/include/util.hpp>
-#include <hpx/lcos/async.hpp>
+#include <hpx/lcos/local/dataflow.hpp>
 
-#include "hpx_odeint_actions.hpp"
+using hpx::lcos::future;
+using hpx::make_ready_future;
+using hpx::lcos::local::dataflow;
 
-using hpx::lcos::dataflow;
-using hpx::lcos::dataflow_base;
-using hpx::find_here;
-
-typedef dataflow_base< double > df_base;
 typedef std::vector< double > dvec;
 typedef std::vector< dvec > dvecvec;
 typedef std::shared_ptr< dvecvec > shared_vec;
@@ -32,18 +26,18 @@ namespace boost {
 namespace numeric {
 namespace odeint {
 
+    /*
 template<>
-state_wrapper< state_type >
+struct state_wrapper< state_type >
 {
-
     state_wrapper()
     {
-        m_v = hpx::make_ready_future( std::allocate_shared<dvecvec>( std::allocator<dvecvec>() ) );
+        m_v = make_ready_future( state_type() );
     }
 
     state_type m_v;
-
-}
+};
+    */
 
 template<>
 struct is_resizeable< state_type >
@@ -67,19 +61,22 @@ template<>
 struct resize_impl< state_type , state_type >
 {
     static void resize( state_type &x1 ,
-                        const state_type &x2 )
+                        state_type x2 )
     {
+        std::cout << "resizing..." << std::endl;
         // allocate required memory
         x1.resize( x2.size() );
         for( size_t i=0 ; i < x2.size() ; ++i )
         {
-            x1[i] = dataflow( []( shared_vec v1 , const shared_vec v2 )
+            x1[i] = dataflow( []( shared_vec v2 )
                               {
-                                  v1->resize( v2->size() );
+                                  shared_vec tmp = std::allocate_shared<dvecvec>( std::allocator<dvecvec>() );
+                                  tmp->resize( v2->size() );
                                   for( size_t n=0 ; n<v2->size() ; ++n )
-                                      (*v1)[n].resize( (*v2)[n].size() );
+                                      (*tmp)[n].resize( (*v2)[n].size() );
+                                  return tmp;
                               } ,
-                              x1[i] , x2[i] );
+                              x2[i] );
         }
     }
 };
