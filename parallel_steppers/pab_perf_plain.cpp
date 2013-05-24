@@ -39,30 +39,37 @@ int main( int argc , char **argv )
     int steps = 100;
     if( argc>1 )
         steps = atoi( argv[1] );
-
-
+    int M = 10;
+    if( argc>2 )
+        M = atoi( argv[2] );
     double dt = 0.1;
 
     std::cout.precision(12);
 
-    state_type x , x_out;
-    std::uniform_real_distribution<double> distribution( 0.0 , 2*3.14159 );
-    std::mt19937 engine( 0 ); // Mersenne twister MT19937
-    auto generator = std::bind(distribution, engine);
-    std::generate( x.begin() , x.end() , std::ref(generator) );
+    double mean_time = 0.0;
 
-    std::cout << x[0] << std::endl;
-
-    pab_stepper_type stepper;
-    double tic = clock(); //TIC
-    for( int n=0 ; n<steps ; ++n )
+    for( int m=0 ; m<M ; m++ )
     {
-        stepper.do_step( rhs , x , n*dt , dt );
-        //x = x_out;
-    }
-    double toc = clock();   //TOC
-    
-    std::cout << "It took "<< (toc-tic)/CLOCKS_PER_SEC <<" second(s)."<< std::endl;
+        state_type x , x_out;
+        std::uniform_real_distribution<double> distribution( 0.0 , 2*3.14159 );
+        std::mt19937 engine( 0 ); // Mersenne twister MT19937
+        auto generator = std::bind(distribution, engine);
+        std::generate( x.begin() , x.end() , std::ref(generator) );
 
-    std::cout << x[0] << std::endl;
+        std::clog << x[0] << std::endl;
+
+        pab_stepper_type stepper;
+        double tic = clock(); //TIC
+        for( int n=0 ; n<steps ; ++n )
+        {
+            stepper.do_step( rhs , x , n*dt , dt );
+            //x = x_out;
+        }
+        double toc = clock();   //TOC
+        mean_time += (toc-tic)/CLOCKS_PER_SEC;
+        std::clog << "runtime: "<< (toc-tic)/CLOCKS_PER_SEC << "s" << std::endl;
+        std::clog << x[0] << std::endl;
+    }
+    
+    std::cout << "mean runtime: "<< mean_time/M << std::endl;
 }
