@@ -24,6 +24,12 @@ add_hpx_executable(test2d
     DEPENDENCIES iostreams
 )
 
+add_hpx_executable(perf2d
+    ESSENTIAL
+    SOURCES perf2d.cpp
+    DEPENDENCIES iostreams
+)
+
 add_hpx_executable(const_test
     ESSENTIAL
     SOURCES const_test.cpp
