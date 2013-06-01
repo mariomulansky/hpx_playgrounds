@@ -29,3 +29,21 @@ add_hpx_executable(const_test
     SOURCES const_test.cpp
     DEPENDENCIES iostreams
 )
+
+add_hpx_executable(test_const_functor
+    ESSENTIAL
+    SOURCES test_const_functor.cpp
+    DEPENDENCIES iostreams
+)
+
+add_hpx_executable(test_shared_dataflow
+    ESSENTIAL
+    SOURCES test_shared_dataflow.cpp
+    DEPENDENCIES iostreams
+)
+
+add_hpx_executable(test_swap
+    ESSENTIAL
+    SOURCES test_swap.cpp
+    DEPENDENCIES iostreams
+)

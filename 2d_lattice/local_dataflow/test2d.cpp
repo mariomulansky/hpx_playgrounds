@@ -11,6 +11,8 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/lcos/local/dataflow.hpp>
 #include <hpx/lcos/async.hpp>
+#include <hpx/util/unwrap.hpp>
+#include <hpx/include/iostreams.hpp>
 
 #include <boost/numeric/odeint.hpp>
 #include <boost/foreach.hpp>
@@ -26,6 +28,8 @@ using hpx::find_here;
 using hpx::lcos::wait;
 using hpx::make_ready_future;
 using hpx::lcos::local::dataflow;
+using hpx::async;
+using hpx::util::unwrap;
 
 using boost::numeric::odeint::symplectic_rkn_sb3a_mclachlan;
 
@@ -43,9 +47,16 @@ typedef symplectic_rkn_sb3a_mclachlan< state_type ,
                                        local_dataflow_algebra ,
                                        local_dataflow_shared_operations2d > stepper_type;
 
-void trivial_sys( state_type q , state_type dpdt )
+void trivial_sys( state_type &q , state_type &dpdt )
 {
-    
+    for( size_t i=0 ; i<q.size() ; ++i )
+    {
+        dpdt[i] = dataflow( unwrap([i]( shared_vec in , shared_vec sync ) 
+            { 
+                hpx::cout << (boost::format("rhs %d ...\n") % i ) << hpx::flush;
+                return in; 
+            }) , q[i] , dpdt[i] );
+    }
 }
 
 void state_swap( state_type &x1 , state_type &x2 )
@@ -53,8 +64,36 @@ void state_swap( state_type &x1 , state_type &x2 )
     for( size_t i=0 ; i<x1.size() ; ++i )
     {
         future< shared_vec > tmp = x1[i];
-        x1[i] = dataflow( []( shared_vec in , shared_vec sync ) { return in; } , x2[i] , x1[i] );
-        x2[i] = dataflow( []( shared_vec in , shared_vec sync ) { return in; } , tmp , x1[i] );
+        x1[i] = dataflow( hpx::launch::sync , 
+                          unwrap([i]( shared_vec in , shared_vec sync ) { 
+                                  //hpx::cout << (boost::format("swap2: %d\n") % i ) << hpx::flush;
+                                  return in; }) , 
+                          x2[i] , tmp );
+        x2[i] = dataflow( hpx::launch::sync , 
+                          unwrap([i]( shared_vec in , shared_vec sync ) { 
+                                  //hpx::cout << (boost::format("swap3: %d\n") % i ) << hpx::flush;
+                                  return in; }) , 
+                          tmp , x1[i] );
+    }
+}
+
+void state_copy( state_type &from , state_type &to )
+{
+    for( size_t i=0 ; i<from.size() ; ++i )
+    {
+        to[i] = dataflow( hpx::launch::async ,
+                          unwrap( []( shared_vec from , shared_vec to ) 
+            { 
+                *from = *to; 
+                return to;
+            }),
+                          from[i] , to[i] );
+        from[i] = dataflow( hpx::launch::async , 
+                            unwrap( []( shared_vec x , shared_vec sync ) 
+            {
+                return x;
+            }) , 
+                            from[i] , to[i] );
     }
 }
 
@@ -104,13 +143,13 @@ int hpx_main(boost::program_options::variables_map& vm)
     for( size_t i=0 ; i<M ; ++i )
     {
         q_in[i] = make_ready_future( std::allocate_shared<dvecvec>( std::allocator<dvecvec>() ) );
-        q_in[i] = dataflow( initialize_zero( G , N2 ) , q_in[i] );
+        q_in[i] = dataflow( unwrap(initialize_zero( G , N2 )) , q_in[i] );
         q_out[i] = make_ready_future( std::allocate_shared<dvecvec>( std::allocator<dvecvec>() ) );
-        q_out[i] = dataflow( initialize_zero( G , N2 ) , q_out[i] );
+        q_out[i] = dataflow( unwrap(initialize_zero( G , N2 )) , q_out[i] );
         p_in[i] = make_ready_future( std::allocate_shared<dvecvec>( std::allocator<dvecvec>() ) );
-        p_in[i] = dataflow( initialize_copy( p_init , i*G , G ) , p_in[i] );
+        p_in[i] = dataflow( unwrap(initialize_copy( p_init , i*G , G )) , p_in[i] );
         p_out[i] = make_ready_future( std::allocate_shared<dvecvec>( std::allocator<dvecvec>() ) );
-        p_out[i] = dataflow( initialize_zero( G , N2 ) , p_out[i] );
+        p_out[i] = dataflow( unwrap(initialize_zero( G , N2 )) , p_out[i] );
     }
 
     wait( q_in );
@@ -154,6 +193,10 @@ int hpx_main(boost::program_options::variables_map& vm)
 
         state_swap( q_in , q_out );
         state_swap( p_in , p_out );
+
+        // state_copy( q_out , q_in );
+        // state_copy( p_out , p_in );
+
     }
 
     hpx::cout << "dataflow generation ready\n" << hpx::flush;

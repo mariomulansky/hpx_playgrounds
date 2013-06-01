@@ -127,8 +127,14 @@ int hpx_main(boost::program_options::variables_map& vm)
         wait( x_out.get_future() );
         //hpx::cout << (boost::format("%f\n") % (*(x_in.get_future().get()))[0]) << hpx::flush;
         hpx::util::high_resolution_timer timer;
+
+        // do first step with synchronization
+        stepper.do_step( rhs , x_in , 0.0 , x_out , 0.1 );
+        wait( x_out.get_future() );
+        // swap in <-> out and synchronize internal states of the stepper
+        sync_swap( x_in , x_out , stepper.m_states[0].m_v , stepper.m_states[1].m_v );
         
-        for( size_t n = 0 ; n < steps ; ++n )
+        for( size_t n = 1 ; n < steps ; ++n )
         {
             stepper.do_step( rhs , x_in , n*dt , x_out , 0.1 );
             // swap in <-> out and synchronize internal states of the stepper

@@ -30,9 +30,11 @@ struct local_dataflow_shared_operations2d
         template< typename S1 , typename S2 , typename S3 >
         S1 operator() ( S1 x1 , const S2 x2 , const S3 x3 ) const
         {
+            //hpx::cout << boost::format( "operation sizes: %d , %d ; %d , %d ; %d , %d\n") % (x1->size()) % (*x1)[0].size() % (x2->size()) % (*x2)[0].size() % (x3->size()) % (*x3)[0].size() << hpx::flush;
             for( size_t i=0 ; i<x1->size() ; ++i )
-                for( size_t j=0 ; j<(*x1)[0].size() ; ++j )
+                for( size_t j=0 ; j<(*x1)[i].size() ; ++j )
                     (*x1)[i][j] = m_alpha1*(*x2)[i][j] + m_alpha2*(*x3)[i][j];
+            //hpx::cout << boost::format( "operation finished\n" ) << hpx::flush;
             return x1;
         }
         

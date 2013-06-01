@@ -73,9 +73,29 @@ HPX_REGISTER_PLAIN_ACTION_TEMPLATE(
 
 
 template< typename T1 , typename T2 >
+T1 identity_sync2( const T1 &x , const T2 &sync1 , const T2 &sync2 )
+{
+    //hpx::cout << (boost::format( "%d\t%d\t%d\n" ) % (sync1->size()) % (sync2->size()) % (sync3->size()) ) << hpx::flush;
+    return x;
+}
+
+template< typename T1 , typename T2 >
+struct identity_sync2_action
+    : hpx::actions::make_direct_action<
+    T1 (*)( const T1& , const T2& , const T2& ) ,
+        &identity_sync2<T1,T2>, 
+        identity_sync2_action<T1,T2> >
+{};
+
+HPX_REGISTER_PLAIN_ACTION_TEMPLATE(
+(template< typename T1 , typename T2 >),
+(identity_sync2_action< T1 , T2 >))
+
+
+template< typename T1 , typename T2 >
 T1 identity_sync3( const T1 &x , const T2 &sync1 , const T2 &sync2 , const T2 &sync3 )
 {
-    // hpx::cout << (boost::format( "%d\t%d\t%d\n" ) % (sync1->size()) % (sync2->size()) % (sync3->size()) ) << hpx::flush;
+    //hpx::cout << (boost::format( "%d\t%d\t%d\n" ) % (sync1->size()) % (sync2->size()) % (sync3->size()) ) << hpx::flush;
     return x;
 }
 

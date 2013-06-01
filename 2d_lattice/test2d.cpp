@@ -209,6 +209,8 @@ int hpx_main(boost::program_options::variables_map& vm)
         synchronized_swap( p_in , p_out );
     }
 
+    hpx::cout << "dataflow generation ready\n" << hpx::flush;
+
     for( size_t i=0 ; i<M ; ++i )
     {
         futures_q[i] = q_in[i].get_future();

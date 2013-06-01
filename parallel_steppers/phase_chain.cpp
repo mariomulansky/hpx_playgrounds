@@ -64,7 +64,7 @@ inline double coupling( const double x )
 
 shared_array rhs_func( const shared_array x_ , shared_array dxdt_ )
 {
-    hpx::cout << "rhs start\n" << hpx::flush;
+    //hpx::cout << "rhs start\n" << hpx::flush;
     darray& x = *x_;
     darray& dxdt = *dxdt_;
     dxdt[0] = coupling( x[1]-x[0] );
@@ -73,7 +73,7 @@ shared_array rhs_func( const shared_array x_ , shared_array dxdt_ )
         dxdt[i] = coupling( x[i+1]-x[i] ) + coupling( x[i-1]-x[i] );
     }
     dxdt[N-1] = coupling( x[N-2] - x[N-1] );
-    hpx::cout << "rhs end\n" << hpx::flush;
+    //hpx::cout << "rhs end\n" << hpx::flush;
     return dxdt_;
 }
 HPX_PLAIN_ACTION( rhs_func , rhs_func_action )
@@ -83,7 +83,18 @@ void rhs( const state_type &x , state_type &dxdt , double t )
     dxdt = dataflow< rhs_func_action >( find_here() , x , dxdt );
 }
 
-void sync_swap( state_type &x1 , state_type &x2 , state_type &sync1 , state_type &sync2 )
+void sync_swap1( state_type &x1 , state_type &x2 , state_type &sync1 )
+{
+    state_type tmp = x1;
+    typedef identity_sync2_action< shared_array , shared_array > sync_ident2;
+    x1 = dataflow< sync_ident2 >( find_here() , x2 , x1 , sync1 );
+    typedef identity_sync1_action< shared_array , shared_array > sync_ident1;
+    x2 = dataflow< sync_ident1 >( find_here() , tmp , x1 );
+    sync1 = dataflow< sync_ident1 >( find_here() , sync1 , x2 );
+}
+
+
+void sync_swap2( state_type &x1 , state_type &x2 , state_type &sync1 , state_type &sync2 )
 {
     state_type tmp = x1;
     typedef identity_sync3_action< shared_array , shared_array > sync_ident3;
@@ -108,17 +119,12 @@ int hpx_main(boost::program_options::variables_map& vm)
     state_type x_in = dataflow< init_action >( find_here() , in );
     darray out = {{0.0}};
     state_type x_out = dataflow< init_action >( find_here() , out );
-    /*
-    for( size_t n = 0 ; n < steps ; ++n )
-    {
-        x_out[n] = dataflow< init_action >( find_here() , out );
-        wait( x_out[n].get_future() );
-    }
-    */
+
     pab_stepper_type stepper;
     // for some reason this is necessary
     wait( x_in.get_future() );
     wait( x_out.get_future() );
+
     hpx::cout << (boost::format("%f\n") % (*(x_in.get_future().get()))[0]) << hpx::flush;
     hpx::util::high_resolution_timer timer;
         
@@ -126,7 +132,8 @@ int hpx_main(boost::program_options::variables_map& vm)
     {
         stepper.do_step( rhs , x_in , n*dt , x_out , 0.1 );
         // swap in <-> out and synchronize internal states of the stepper
-        sync_swap( x_in , x_out , stepper.m_states[0].m_v , stepper.m_states[1].m_v );
+        //sync_swap1( x_in , x_out , stepper.m_states[0].m_v );
+        sync_swap2( x_in , x_out , stepper.m_states[0].m_v , stepper.m_states[1].m_v );
     }
     wait( x_in.get_future() );
 

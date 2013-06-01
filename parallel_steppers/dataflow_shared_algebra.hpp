@@ -4,6 +4,7 @@
 
 #include <hpx/include/iostreams.hpp>
 
+#include "identity_action.hpp"
 #include "dataflow_operations.hpp"
 
 using hpx::lcos::dataflow;
@@ -100,7 +101,7 @@ namespace hpx_odeint_actions {
 
     template< typename S , typename Operation >
     struct operation_6_action
-        : hpx::actions::make_direct_action<
+        : hpx::actions::make_action<
         S (*)( S , 
                const S& , 
                const S& ,
