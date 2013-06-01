@@ -65,7 +65,7 @@ struct resize_impl< state_type , state_type >
     static void resize( state_type &x1 ,
                         state_type x2 )
     {
-        std::cout << "resizing..." << std::endl;
+        //std::cout << "resizing..." << std::endl;
         // allocate required memory
         x1.resize( x2.size() );
         for( size_t i=0 ; i < x2.size() ; ++i )
@@ -80,7 +80,7 @@ struct resize_impl< state_type , state_type >
                               }) ,
                               x2[i] );
         }
-        std::cout << "resizing complete" << std::endl;
+        //std::cout << "resizing complete" << std::endl;
     }
 };
 

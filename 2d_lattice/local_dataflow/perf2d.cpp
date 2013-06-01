@@ -186,7 +186,7 @@ int hpx_main(boost::program_options::variables_map& vm)
 
             }
 
-            hpx::cout << "dataflow generation ready\n" << hpx::flush;
+            //hpx::cout << "dataflow generation ready\n" << hpx::flush;
 
             wait( q_in );
             wait( p_in );
