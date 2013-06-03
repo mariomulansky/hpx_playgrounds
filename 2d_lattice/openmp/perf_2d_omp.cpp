@@ -38,6 +38,7 @@ int main( int argc , char* argv[] )
 {
     int N1 = 1024;
     int N2 = 1024;
+    int block_size = 8;
     int init_length = 128;
     int steps = 10;
     double dt = 0.1;
@@ -45,9 +46,10 @@ int main( int argc , char* argv[] )
         N1 = atoi( argv[1] );
     if( argc > 2 )
         N2 = atoi( argv[2] );
-    int block_size = 8;
     if( argc > 3 )
-        steps = atoi( argv[3] );
+        block_size = atoi( argv[3] );
+    if( argc > 4 )
+        steps = atoi( argv[4] );
 
     std::clog << "Size: " << N1 << "x" << N2 << " with " << steps << " steps" << std::endl;
 
