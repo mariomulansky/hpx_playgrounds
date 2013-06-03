@@ -114,13 +114,18 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     const std::size_t M = N1/G;
 
-    dvecvec p_init( N1 , dvec( N2 , 0.0 ) );
+    double run_time = 1000000.0;
+    
+    for( size_t n=0 ; n<10 ; ++n )
+    {
 
-    std::uniform_real_distribution<double> distribution( -1.0 , 1.0 );
-    std::mt19937 engine( 0 ); // Mersenne twister MT19937
-    auto generator = std::bind(distribution, engine);
+        dvecvec p_init( N1 , dvec( N2 , 0.0 ) );
 
-    if( fully_random )
+        std::uniform_real_distribution<double> distribution( -1.0 , 1.0 );
+        std::mt19937 engine( 0 ); // Mersenne twister MT19937
+        auto generator = std::bind(distribution, engine);
+
+        if( fully_random )
         {
             for( size_t j=0 ; j<N1 ; j++ )
                 std::generate( p_init[j].begin() , 
@@ -134,12 +139,12 @@ int hpx_main(boost::program_options::variables_map& vm)
                                std::ref(generator) );
         }
 
-    state_type q_in( M );
-    state_type p_in( M );
-    state_type q_out( M );
-    state_type p_out( M );
+        state_type q_in( M );
+        state_type p_in( M );
+        state_type q_out( M );
+        state_type p_out( M );
 
-    for( size_t i=0 ; i<M ; ++i )
+        for( size_t i=0 ; i<M ; ++i )
         {
             q_in[i] = dataflow< initialize_2d_action >( find_here() , 
                                                         std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
@@ -165,23 +170,23 @@ int hpx_main(boost::program_options::variables_map& vm)
 
         }
 
-    std::vector< future<shared_vec> > futures_q( M );
-    std::vector< future<shared_vec> > futures_p( M );
-    for( size_t i=0 ; i<M ; ++i )
+        std::vector< future<shared_vec> > futures_q( M );
+        std::vector< future<shared_vec> > futures_p( M );
+        for( size_t i=0 ; i<M ; ++i )
         {
             futures_q[i] = q_in[i].get_future();
             futures_p[i] = p_in[i].get_future();
         }
 
-    wait( futures_q );
-    wait( futures_p );
+        wait( futures_q );
+        wait( futures_p );
 
-    hpx::util::high_resolution_timer timer;
+        hpx::util::high_resolution_timer timer;
 
-    stepper_type stepper;
-    spreading_observer obs;
+        stepper_type stepper;
+        spreading_observer obs;
 
-    for( size_t t=0 ; t<steps ; ++t )
+        for( size_t t=0 ; t<steps ; ++t )
         {
             auto in = std::make_pair( boost::ref(q_in) , boost::ref(p_in) );
             auto out = std::make_pair( boost::ref(q_out) , boost::ref(p_out) );
@@ -195,16 +200,16 @@ int hpx_main(boost::program_options::variables_map& vm)
             synchronized_swap( p_in , p_out );
         }
 
-    for( size_t i=0 ; i<M ; ++i )
+        for( size_t i=0 ; i<M ; ++i )
         {
             futures_q[i] = q_in[i].get_future();
             futures_p[i] = p_in[i].get_future();
         }
-    wait( futures_q );
-    wait( futures_p );
+        wait( futures_q );
+        wait( futures_p );
 
-    double run_time = timer.elapsed();
-
+        double run_time = std::min( run_time , timer.elapsed() );
+    }
     
     hpx::cout << (boost::format("%d\t%f\n") % G % (run_time)) << hpx::flush;
 
@@ -249,8 +254,8 @@ int main( int argc , char* argv[] )
         ;
     desc_commandline.add_options()
         ( "dt",
-          boost::program_options::value<double>()->default_value(0.01),
-          "step size (0.01)")
+          boost::program_options::value<double>()->default_value(0.1),
+          "step size (0.1)")
         ;
 
     // Initialize and run HPX
