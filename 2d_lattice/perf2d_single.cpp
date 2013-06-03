@@ -114,7 +114,8 @@ int hpx_main(boost::program_options::variables_map& vm)
 
     const std::size_t M = N1/G;
 
-    double run_time = 1000000.0;
+    double min_time = 1000000.0;
+    double mean_time = 0.0;
     
     for( size_t n=0 ; n<10 ; ++n )
     {
@@ -208,10 +209,13 @@ int hpx_main(boost::program_options::variables_map& vm)
         wait( futures_q );
         wait( futures_p );
 
-        double run_time = std::min( run_time , timer.elapsed() );
+        double run_time = timer.elapsed();
+
+        min_time = std::min( min_time , run_time );
+        mean_time += run_time;
     }
     
-    hpx::cout << (boost::format("%d\t%f\n") % G % (run_time)) << hpx::flush;
+    hpx::cout << (boost::format("%d\t%f\t%f\n") % G % (min_time) % (mean_time/10)) << hpx::flush;
 
     return hpx::finalize();
 }
