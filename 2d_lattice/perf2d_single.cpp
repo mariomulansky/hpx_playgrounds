@@ -100,22 +100,19 @@ void synchronized_swap( state_type &x_in , state_type &x_out )
     }
 }
 
+
 int hpx_main(boost::program_options::variables_map& vm)
 {
 
     const std::size_t N1 = vm["N1"].as<std::size_t>();
     const std::size_t N2 = vm["N2"].as<std::size_t>();
-    const std::size_t G = vm["G"].as<std::size_t>();
+    const std::size_t G =  vm["G"].as<std::size_t>();
     const bool fully_random = vm["fully_random"].as<bool>();
-    const bool do_observation = vm["observe"].as<bool>();
     const std::size_t init_length = vm["init_length"].as<std::size_t>();
     const std::size_t steps = vm["steps"].as<std::size_t>();
     const double dt = vm["dt"].as<double>();
+
     const std::size_t M = N1/G;
-
-
-    std::clog << "Dimension: " << N1 << "x" << N2 << ", number of rows per dataflow: " << G;
-    std::clog << ", number of dataflow: " << M << ", steps: " << steps << ", dt: " << dt << std::endl;
 
     dvecvec p_init( N1 , dvec( N2 , 0.0 ) );
 
@@ -124,18 +121,18 @@ int hpx_main(boost::program_options::variables_map& vm)
     auto generator = std::bind(distribution, engine);
 
     if( fully_random )
-    {
-        for( size_t j=0 ; j<N1 ; j++ )
-            std::generate( p_init[j].begin() , 
-                           p_init[j].end() , 
-                           std::ref(generator) );
-    } else
-    {
-        for( size_t j=N1/2-init_length/2 ; j<N1/2+init_length/2 ; j++ )
-            std::generate( p_init[j].begin()+N2/2-init_length/2 , 
-                           p_init[j].begin()+N2/2+init_length/2 , 
-                           std::ref(generator) );
-    }
+        {
+            for( size_t j=0 ; j<N1 ; j++ )
+                std::generate( p_init[j].begin() , 
+                               p_init[j].end() , 
+                               std::ref(generator) );
+        } else
+        {
+            for( size_t j=N1/2-init_length/2 ; j<N1/2+init_length/2 ; j++ )
+                std::generate( p_init[j].begin()+N2/2-init_length/2 , 
+                               p_init[j].begin()+N2/2+init_length/2 , 
+                               std::ref(generator) );
+        }
 
     state_type q_in( M );
     state_type p_in( M );
@@ -143,57 +140,41 @@ int hpx_main(boost::program_options::variables_map& vm)
     state_type p_out( M );
 
     for( size_t i=0 ; i<M ; ++i )
-    {
-        q_in[i] = dataflow< initialize_2d_action >( find_here() , 
-                                                    std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
-                                                    G ,
-                                                    N2 ,
-                                                    0.0 );
-        p_in[i] = dataflow< initialize_2d_from_data_action >( find_here() , 
-                                                              std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
-                                                              p_init ,
-                                                              i*G ,
-                                                              G
-                                                              );
-        q_out[i] = dataflow< initialize_2d_action >( find_here() , 
-                                                     std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
-                                                     G ,
-                                                     N2 ,
-                                                     0.0 );
-        p_out[i] = dataflow< initialize_2d_action >( find_here() , 
-                                                     std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
-                                                     G ,
-                                                     N2 ,
-                                                     0.0 );
+        {
+            q_in[i] = dataflow< initialize_2d_action >( find_here() , 
+                                                        std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
+                                                        G ,
+                                                        N2 ,
+                                                        0.0 );
+            p_in[i] = dataflow< initialize_2d_from_data_action >( find_here() , 
+                                                                  std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
+                                                                  p_init ,
+                                                                  i*G ,
+                                                                  G
+                                                                  );
+            q_out[i] = dataflow< initialize_2d_action >( find_here() , 
+                                                         std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
+                                                         G ,
+                                                         N2 ,
+                                                         0.0 );
+            p_out[i] = dataflow< initialize_2d_action >( find_here() , 
+                                                         std::allocate_shared< dvecvec >( std::allocator<dvecvec>() ) ,
+                                                         G ,
+                                                         N2 ,
+                                                         0.0 );
 
-    }
+        }
 
     std::vector< future<shared_vec> > futures_q( M );
     std::vector< future<shared_vec> > futures_p( M );
     for( size_t i=0 ; i<M ; ++i )
-    {
-        futures_q[i] = q_in[i].get_future();
-        futures_p[i] = p_in[i].get_future();
-    }
+        {
+            futures_q[i] = q_in[i].get_future();
+            futures_p[i] = p_in[i].get_future();
+        }
 
     wait( futures_q );
     wait( futures_p );
-    std::clog.precision(10);
-    std::clog << "Initialization complete, energy: " << energy( futures_q , futures_p ) << std::endl;
-
-    // std::cout.precision(10);
-
-    // //print the values
-    // for( size_t m=0 ; m<M ; ++m )
-    //     for( size_t g=0 ; g<G ; g++ )
-    //     {
-    //         for( size_t i=0 ; i<N2 ; i++ )
-    //         {
-    //             std::cout << (*(futures_q[m].get()))[g][i] << ',';
-    //             std::cout << (*(futures_p[m].get()))[g][i] << '\t';
-    //         }
-    //         std::cout << std::endl;
-    //     }
 
     hpx::util::high_resolution_timer timer;
 
@@ -201,70 +182,32 @@ int hpx_main(boost::program_options::variables_map& vm)
     spreading_observer obs;
 
     for( size_t t=0 ; t<steps ; ++t )
-    {
-        auto in = std::make_pair( boost::ref(q_in) , boost::ref(p_in) );
-        auto out = std::make_pair( boost::ref(q_out) , boost::ref(p_out) );
-        stepper.do_step( system_2d , 
-                         in ,
-                         t*dt , 
-                         out , 
-                         dt );
-
-        // std::swap( q_in , q_out );
-        // std::swap( p_in , p_out );
-
-        if( do_observation && ((t%10) == 0) )
         {
-            obs( q_out , p_out , t*dt );
+            auto in = std::make_pair( boost::ref(q_in) , boost::ref(p_in) );
+            auto out = std::make_pair( boost::ref(q_out) , boost::ref(p_out) );
+            stepper.do_step( system_2d , 
+                             in ,
+                             t*dt , 
+                             out , 
+                             dt );
+
+            synchronized_swap( q_in , q_out );
+            synchronized_swap( p_in , p_out );
         }
 
-        synchronized_swap( q_in , q_out );
-        synchronized_swap( p_in , p_out );
-    }
-
-    hpx::cout << "dataflow generation ready\n" << hpx::flush;
-
     for( size_t i=0 ; i<M ; ++i )
-    {
-        futures_q[i] = q_in[i].get_future();
-        futures_p[i] = p_in[i].get_future();
-    }
+        {
+            futures_q[i] = q_in[i].get_future();
+            futures_p[i] = p_in[i].get_future();
+        }
     wait( futures_q );
     wait( futures_p );
 
-    hpx::cout << (boost::format("runtime: %fs\n") %timer.elapsed()) << hpx::flush;
+    double run_time = timer.elapsed();
 
-    std::clog << "Integration complete, energy: " << energy( futures_q , futures_p ) << std::endl;
+    
+    hpx::cout << (boost::format("%d\t%f\n") % G % (run_time)) << hpx::flush;
 
-    std::cout.precision(10);
-
-
-    // get the spreading
-    std::pair< double , std::vector< dataflow_base<double> > > x;
-    BOOST_FOREACH( x , obs.m_values )
-    {
-        hpx::cout << (boost::format("%f\t") % (x.first) );
-        double d = 0.0;
-        BOOST_FOREACH( dataflow_base<double> df , x.second )
-        {
-            d += df.get_future().get();
-        }
-        hpx::cout << (boost::format("%f\n") % d );
-    }
-    hpx::cout << hpx::flush;
-
-    // //print the values
-    // for( size_t m=0 ; m<M ; ++m )
-    //     for( size_t g=0 ; g<G ; g++ )
-    //     {
-    //         for( size_t i=0 ; i<N2 ; i++ )
-    //         {
-    //             std::cout << (*(futures_q[m].get()))[g][i] << ',';
-    //             std::cout << (*(futures_p[m].get()))[g][i] << '\t';
-    //         }
-    //         std::cout << std::endl;
-    //     }
- 
     return hpx::finalize();
 }
 
@@ -286,25 +229,19 @@ int main( int argc , char* argv[] )
         ;
     desc_commandline.add_options()
         ( "G",
-          boost::program_options::value<std::size_t>()->default_value(128),
-          "Block size (128)")
+          boost::program_options::value<std::size_t>()->default_value(64),
+          "granulartity (64)")
         ;
     desc_commandline.add_options()
         ( "fully_random",
-          boost::program_options::value<bool>()->default_value(false),
-          "Fully random initial condition (false)")
+          boost::program_options::value<bool>()->default_value(true),
+          "Fully random initial condition (true)")
         ;
     desc_commandline.add_options()
         ( "init_length",
           boost::program_options::value<std::size_t>()->default_value(32),
           "Initial excitation length (32)")
         ;
-    desc_commandline.add_options()
-        ( "observe",
-          boost::program_options::value<bool>()->default_value(false),
-          "Spreading observation (false)")
-        ;
-
     desc_commandline.add_options()
         ( "steps",
           boost::program_options::value<std::size_t>()->default_value(100),

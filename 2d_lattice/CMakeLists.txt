@@ -23,3 +23,9 @@ add_hpx_executable(perf2d
     SOURCES perf2d.cpp
     DEPENDENCIES dataflow iostreams
 )
+
+add_hpx_executable(perf2d_single
+    ESSENTIAL
+    SOURCES perf2d_single.cpp
+    DEPENDENCIES dataflow iostreams
+)
