@@ -112,6 +112,8 @@ int main( int argc , char* argv[] )
         min_time = std::min( min_time , run_time );
         avrg_time += run_time;
 
+        std::clog << "G: " << block_size << ", run " << i << ": " << run_time << std::endl;
+
         // std::ref(obs) );
         // std::clog << "Final energy: " << system.energy( q , p ) << std::endl;
     

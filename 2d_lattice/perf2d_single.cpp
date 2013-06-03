@@ -211,6 +211,8 @@ int hpx_main(boost::program_options::variables_map& vm)
 
         double run_time = timer.elapsed();
 
+        std::clog << "run " << i << ": " << run_time << std::endl;
+
         min_time = std::min( min_time , run_time );
         mean_time += run_time;
     }
