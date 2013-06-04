@@ -218,6 +218,11 @@ int main( int argc , char* argv[] )
           "Dimension 2 (1024)")
         ;
     desc_commandline.add_options()
+        ( "G",
+          boost::program_options::value<std::size_t>()->default_value(64),
+          "Granularity (64)")
+        ;
+    desc_commandline.add_options()
         ( "fully_random",
           boost::program_options::value<bool>()->default_value(true),
           "Fully random initial condition (true)")
@@ -234,8 +239,8 @@ int main( int argc , char* argv[] )
         ;
     desc_commandline.add_options()
         ( "dt",
-          boost::program_options::value<double>()->default_value(0.01),
-          "step size (0.01)")
+          boost::program_options::value<double>()->default_value(0.1),
+          "step size (0.1)")
         ;
 
     // Initialize and run HPX

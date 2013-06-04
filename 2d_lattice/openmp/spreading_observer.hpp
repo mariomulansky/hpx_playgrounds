@@ -47,7 +47,7 @@ struct spreading_observer
             double a = 0.0;
 
 #ifndef NO_OMP
-#pragma omp parallel for reduction(+:a) schedule( dynamic , m_block_size )
+#pragma omp parallel for reduction(+:a) schedule( runtime )
 #endif //NO_OMP
             for( size_t i=0 ; i<N-1 ; ++i )
             {

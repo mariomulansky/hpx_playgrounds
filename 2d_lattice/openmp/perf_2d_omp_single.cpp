@@ -4,6 +4,8 @@
 #include <vector>
 #include <random>
 
+#include <omp.h>
+
 #include <boost/numeric/odeint.hpp>
 #include <boost/timer/timer.hpp>
 #include <boost/foreach.hpp>
@@ -53,13 +55,16 @@ int main( int argc , char* argv[] )
 
     //std::clog << "Size: " << N1 << "x" << N2 << " with " << steps << " steps" << std::endl;
 
+    //omp_set_schedule( omp_sched_dynamic , block_size );
+    omp_set_schedule( omp_sched_static , block_size );
+
     double avrg_time = 0.0;
     double min_time = 1000000.0;
         
     for( size_t n=0 ; n<10 ; ++n )
     {
 
-        lattice2d system( KAPPA , LAMBDA , beta , block_size );
+        lattice2d system( KAPPA , LAMBDA , beta );
 
         // initialize
         state_type q( N1 , dvec( N2 , 0.0 ) );
@@ -96,13 +101,13 @@ int main( int argc , char* argv[] )
         //     std::cout << std::endl;
         // }
 
-        spreading_observer obs( KAPPA , LAMBDA , beta , block_size );
+        spreading_observer obs( KAPPA , LAMBDA , beta );
 
         //std::cout << "# Initial energy: " << system.energy( q , p ) << std::endl;
     
         cpu_timer timer;
 
-        integrate_n_steps( stepper_type( nested_omp_algebra<range_algebra>( block_size ) ) , 
+        integrate_n_steps( stepper_type( nested_omp_algebra<range_algebra>() ) , 
                            system , 
                            std::make_pair( std::ref(q) , std::ref(p) ) , 
                            0.0 , dt , steps );
@@ -112,7 +117,7 @@ int main( int argc , char* argv[] )
         min_time = std::min( min_time , run_time );
         avrg_time += run_time;
 
-        std::clog << "G: " << block_size << ", run " << i << ": " << run_time << std::endl;
+        std::clog << "G: " << block_size << ", run " << n << ": " << run_time << std::endl;
 
         // std::ref(obs) );
         // std::clog << "Final energy: " << system.energy( q , p ) << std::endl;

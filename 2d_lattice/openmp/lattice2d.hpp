@@ -36,13 +36,12 @@ struct lattice2d {
     const double m_beta;
     const double m_kap;
     const double m_lam;
-    const int m_block_size;
     int m_threads;
 
     lattice2d( const double kap , const double lam , 
-               const double beta , const int block_size = 1 )
+               const double beta )
         : m_kap( kap ) , m_lam( lam ) , m_beta( beta ) , 
-          m_block_size( block_size ) , m_threads(0)
+          m_threads(0)
     { }
 
     template< class StateIn , class StateOut >
@@ -58,7 +57,7 @@ struct lattice2d {
         int last_i = -1;
 
 #ifndef NO_OMP
-#pragma omp parallel for firstprivate( coupling_lr , coupling_ud , last_i ) schedule( dynamic , m_block_size )
+#pragma omp parallel for firstprivate( coupling_lr , coupling_ud , last_i ) schedule(runtime)
 #endif	
         for( int i=0 ; i<N ; ++i )
         {
@@ -129,7 +128,7 @@ struct lattice2d {
                     m_threads = omp_get_num_threads();
             }
 
-#pragma omp for reduction(+:energy) schedule( dynamic , m_block_size )
+#pragma omp for reduction(+:energy) schedule(runtime)
 #endif //NO_OMP
             for( size_t i=0 ; i<N-1 ; ++i )
             {

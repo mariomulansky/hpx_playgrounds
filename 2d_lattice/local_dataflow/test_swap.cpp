@@ -28,7 +28,7 @@ struct mul
     double operator()( double x1 , double x2 ) const
     {
         //boost::this_thread::sleep( boost::posix_time::milliseconds(1000) );
-        hpx::cout << boost::format( "mul: %f , %f\n" ) % x1 %x2 << hpx::flush;
+        //hpx::cout << boost::format( "mul: %f , %f\n" ) % x1 %x2 << hpx::flush;
         return x1*x2;
     }
 };
@@ -38,7 +38,7 @@ struct divide
     double operator()( double x1 , double x2 ) const
     {
         //boost::this_thread::sleep( boost::posix_time::milliseconds(1000) );
-        hpx::cout << boost::format( "div: %f , %f\n" ) % x1 %x2 << hpx::flush;
+        //hpx::cout << boost::format( "div: %f , %f\n" ) % x1 %x2 << hpx::flush;
         return x1/x2;
     }
 };
@@ -72,8 +72,8 @@ int main()
     for( int n=0 ; n<20 ; ++n )
     {
         f1 = dataflow( hpx::launch::async , unwrap(mul()) , f1 , f2 );
-        //f2 = dataflow( hpx::launch::async , unwrap(divide()) , f1 , f2 );
-        future_copy( f1 , f2 , n );
+        f2 = dataflow( hpx::launch::async , unwrap(divide()) , f1 , f2 );
+        future_swap( f1 , f2 );
         //wait( f1 );
     }
 
