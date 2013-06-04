@@ -67,8 +67,7 @@ int main( int argc , char* argv[] )
         lattice2d system( KAPPA , LAMBDA , beta );
 
         // initialize
-        state_type q( N1 , dvec( N2 , 0.0 ) );
-        state_type p( N1 , dvec( N2 , 0.0 ) );
+        state_type p_init( N1 , dvec( N2 , 0.0 ) );
     
         //fully random
         for( size_t i=0 ; i<N1 ; ++i )
@@ -76,7 +75,17 @@ int main( int argc , char* argv[] )
             std::uniform_real_distribution<double> distribution( 0.0 );
             std::mt19937 engine( i ); // Mersenne twister MT19937
             auto generator = std::bind( distribution , engine );
-            std::generate( p[i].begin() , p[i].end() , generator );
+            std::generate( p_init[i].begin() , p_init[i].end() , generator );
+        }
+
+        state_type q( N1 );
+        state_type p( N1 );
+
+        #pragma omp parallel for
+        for( size_t i=0 ; i<N1 ; i++ )
+        {
+            q[i] = dvec( N2 , 0.0 );
+            p[i] = p_init[i];
         }
 
         // std::clog << "# Initial energy: " << system.energy( q , p ) << " (fully random)" << std::endl;
